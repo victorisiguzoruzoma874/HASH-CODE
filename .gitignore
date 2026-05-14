@@ -1,0 +1,59 @@
+# ── Dependencies ─────────────────────────────────────────────
+node_modules/
+.pnp
+.pnp.js
+
+# ── Build outputs ─────────────────────────────────────────────
+dist/
+build/
+out/
+artifacts/
+cache/
+typechain-types/
+frontend/dist/
+
+# ── Environment — NEVER commit real secrets ───────────────────
+.env
+.env.local
+.env.*.local
+# Keep examples
+!.env.example
+
+# ── Logs ──────────────────────────────────────────────────────
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+
+# ── OS ────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── IDE ───────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ── Prisma ────────────────────────────────────────────────────
+backend/prisma/migrations/dev.db
+backend/prisma/migrations/dev.db-journal
+
+# ── Move build ────────────────────────────────────────────────
+contracts/move/build/
+contracts/sui/build/
+
+# ── TypeScript build info ─────────────────────────────────────
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+
+# ── Hardhat ───────────────────────────────────────────────────
+contracts/evm/cache/
+contracts/evm/artifacts/
+contracts/evm/typechain-types/
+
+# ── Misc ──────────────────────────────────────────────────────
+.turbo/
+.cache/
+coverage/

@@ -1,0 +1,191 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+/* ── Design Tokens ─────────────────────────────────────────── */
+:root {
+  /* Surfaces */
+  --surface-0:  #07111F;   /* app background */
+  --surface-1:  #0F172A;   /* primary cards */
+  --surface-2:  #162033;   /* elevated surfaces */
+  --surface-3:  #1C2B40;   /* inputs, inner panels */
+  --border:     #1E293B;   /* default border */
+  --border-sub: #162033;   /* subtle border */
+
+  /* Text */
+  --text-1: #F8FAFC;   /* primary */
+  --text-2: #94A3B8;   /* secondary */
+  --text-3: #64748B;   /* muted */
+  --text-4: #334155;   /* placeholder */
+
+  /* Accents */
+  --green:  #22C55E;   /* gains / success / positive */
+  --blue:   #3B82F6;   /* charts / analytics */
+  --purple: #8B5CF6;   /* CTA / premium */
+  --cyan:   #06B6D4;   /* visual sophistication */
+  --red:    #EF4444;   /* danger */
+  --amber:  #F59E0B;   /* warning */
+}
+
+/* ── Reset ─────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── Base ──────────────────────────────────────────────────── */
+html { font-size: 16px; }
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background-color: var(--surface-0);
+  color: var(--text-1);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.5;
+}
+
+/* ── Scrollbar ─────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 3px; height: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: #2D3F55; }
+
+/* ── Typography helpers ────────────────────────────────────── */
+.font-mono { font-family: 'JetBrains Mono', 'Fira Code', monospace; }
+
+.metric-xl {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-1);
+  line-height: 1;
+}
+
+.metric-lg {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-1);
+  line-height: 1;
+}
+
+.label-xs {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+/* ── Card system ───────────────────────────────────────────── */
+.card {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+}
+
+.card-elevated {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+}
+
+.card-inner {
+  background: var(--surface-3);
+  border: 1px solid var(--border-sub);
+  border-radius: 12px;
+}
+
+/* ── Input focus ───────────────────────────────────────────── */
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--blue) !important;
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
+}
+
+/* ── Button system ─────────────────────────────────────────── */
+.btn-primary {
+  background: linear-gradient(135deg, #22C55E 0%, #06B6D4 100%);
+  color: #07111F;
+  font-weight: 600;
+  border-radius: 12px;
+  transition: all 0.2s ease;
+  box-shadow: 0 0 0 0 rgba(34,197,94,0);
+}
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px rgba(34,197,94,0.25);
+}
+.btn-primary:active { transform: translateY(0); }
+
+.btn-secondary {
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-weight: 500;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  transition: all 0.2s ease;
+}
+.btn-secondary:hover {
+  background: var(--surface-3);
+  color: var(--text-1);
+  border-color: #2D3F55;
+}
+
+.btn-purple {
+  background: linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%);
+  color: #fff;
+  font-weight: 600;
+  border-radius: 12px;
+  transition: all 0.2s ease;
+}
+.btn-purple:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px rgba(139,92,246,0.3);
+}
+
+/* ── Skeleton shimmer ──────────────────────────────────────── */
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg,
+    rgba(255,255,255,0.03) 25%,
+    rgba(255,255,255,0.06) 50%,
+    rgba(255,255,255,0.03) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.8s infinite;
+}
+
+/* ── QR scanner pulse ──────────────────────────────────────── */
+@keyframes pulse-border {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+.pulse-border { animation: pulse-border 2s ease-in-out infinite; }
+
+/* ── Subtle noise texture overlay ─────────────────────────── */
+.noise::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+/* ── Gradient text utility ─────────────────────────────────── */
+.gradient-text-green {
+  background: linear-gradient(135deg, #22C55E, #06B6D4);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-text-purple {
+  background: linear-gradient(135deg, #8B5CF6, #06B6D4);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}

@@ -1,0 +1,22 @@
+[package]
+name    = "hashpay"
+version = "1.0.0"
+authors = ["HashPay Global <dev@hashpay.io>"]
+
+[addresses]
+hashpay = "0xCAFE"   # Replace with your deployed address
+
+[dependencies.AptosFramework]
+git      = "https://github.com/aptos-labs/aptos-core.git"
+rev      = "mainnet"
+subdir   = "aptos-move/framework/aptos-framework"
+
+[dependencies.AptosStdlib]
+git      = "https://github.com/aptos-labs/aptos-core.git"
+rev      = "mainnet"
+subdir   = "aptos-move/framework/aptos-stdlib"
+
+[dependencies.MoveStdlib]
+git      = "https://github.com/aptos-labs/aptos-core.git"
+rev      = "mainnet"
+subdir   = "aptos-move/framework/move-stdlib"

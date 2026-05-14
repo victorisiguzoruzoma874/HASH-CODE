@@ -1,0 +1,232 @@
+// HashPay Global — Prisma Schema
+// Run: npx prisma migrate dev --name add_sui_multicurrency
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── Enums ────────────────────────────────────────────────────
+
+enum UserRole {
+  USER
+  ADMIN
+  TREASURY
+}
+
+enum KycStatus {
+  NONE
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum KycLevel {
+  NONE
+  BASIC
+  FULL
+}
+
+enum EscrowStatus {
+  DEPOSITING
+  PENDING_PAYOUT
+  COMPLETED
+  PAYOUT_FAILED
+  REFUNDED
+  CANCELLED
+}
+
+enum AirtimeStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+// ── Models ───────────────────────────────────────────────────
+
+model User {
+  id               String    @id @default(uuid())
+  email            String    @unique
+  passwordHash     String
+  fullName         String
+  role             UserRole  @default(USER)
+
+  // Wallet addresses
+  aptosAddress     String?   @unique
+  evmAddress       String?   @unique
+  suiAddress       String?   @unique   // ← NEW: Sui wallet address
+
+  // Bank details (encrypted at application layer)
+  bankCode         String?
+  bankName         String?
+  bankAccountNumber String?
+  bankAccountName  String?
+
+  // Preferred payout currency
+  preferredCurrency String?  @default("NGN")  // ← NEW: NGN | GHS | KES | XOF | XAF
+
+  // KYC
+  kycStatus        KycStatus @default(NONE)
+  kycLevel         KycLevel  @default(NONE)
+  kycJobId         String?
+
+  // Relations
+  escrowOrders     EscrowOrder[]
+  airtimeTransactions AirtimeTransaction[]
+  swapHistory      SwapRecord[]
+
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([aptosAddress])
+  @@index([evmAddress])
+  @@index([suiAddress])
+  @@map("users")
+}
+
+model EscrowOrder {
+  id             String       @id @default(uuid())
+
+  // On-chain data (Aptos OR Sui — one will be set)
+  aptosEventSeq  String?      @unique   // Aptos event sequence (idempotency key)
+  suiOrderId     String?      @unique   // Sui order_id bytes as hex string
+  txHash         String
+  userAddress    String
+  asset          String                 // 'USDC' | 'USDT' | 'ETH' | 'SUI'
+  amountRaw      String                 // u64 as string (on-chain decimals)
+
+  // ── NEW: Sui-specific fields ──────────────────────────────
+  recordId       String?                // Sui EscrowRecord object ID
+  currencyOut    String?  @default("NGN") // 'NGN' | 'GHS' | 'KES' | 'XOF' | 'XAF'
+  amountOut      Float?                 // locked fiat amount from quote
+  timeoutEpoch   BigInt?                // Sui epoch after which user can self-refund
+  chain          String?  @default("aptos") // 'aptos' | 'sui' | 'evm'
+
+  // Fiat payout
+  ngnAmount      Float?
+  payoutRef      String?                // Provider payout reference
+  payoutProvider String?                // 'afriex' | 'opay' | 'flipeet' | 'flutterwave' | 'paystack'
+
+  // Status
+  status         EscrowStatus @default(DEPOSITING)
+  failureReason  String?
+
+  // Relations
+  userId         String?
+  user           User?        @relation(fields: [userId], references: [id])
+
+  completedAt    DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([userAddress])
+  @@index([status])
+  @@index([payoutRef])
+  @@index([recordId])
+  @@index([currencyOut])
+  @@map("escrow_orders")
+}
+
+model SwapRecord {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+
+  assetIn     String
+  assetOut    String
+  amountIn    Float
+  amountOut   Float
+  rate        Float
+  slippageBps Int      @default(50)
+  txHash      String?
+  chain       String?  @default("sui")   // ← NEW
+  status      String   @default("PENDING")
+
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@map("swap_records")
+}
+
+model AirtimeTransaction {
+  id          String        @id @default(uuid())
+  userId      String
+  user        User          @relation(fields: [userId], references: [id])
+
+  phoneNumber String
+  amount      Float
+  currency    String        @default("NGN")
+  payAsset    String        @default("USDC")
+  cryptoCost  Float
+  reference   String?
+  status      AirtimeStatus @default(PENDING)
+
+  createdAt   DateTime      @default(now())
+
+  @@index([userId])
+  @@map("airtime_transactions")
+}
+
+model PriceSnapshot {
+  id        String   @id @default(uuid())
+  asset     String
+  usdPrice  Float
+  ngnRate   Float
+  ghsRate   Float?   // ← NEW
+  kesRate   Float?   // ← NEW
+  xofRate   Float?   // ← NEW
+  xafRate   Float?   // ← NEW
+  source    String   @default("pyth")
+  chain     String?  @default("sui")
+  createdAt DateTime @default(now())
+
+  @@index([asset, createdAt])
+  @@map("price_snapshots")
+}
+
+model ReconciliationLog {
+  id              String   @id @default(uuid())
+  runAt           DateTime @default(now())
+  chain           String   @default("sui")   // ← NEW
+  onChainBalance  Float
+  dbBalance       Float
+  discrepancy     Float
+  status          String   // 'OK' | 'DISCREPANCY'
+  notes           String?
+
+  @@map("reconciliation_logs")
+}
+
+// ── NEW: Provider health tracking ────────────────────────────
+
+model ProviderHealthLog {
+  id           String   @id @default(uuid())
+  provider     String   // 'afriex' | 'opay' | 'flipeet'
+  currency     String   // 'NGN' | 'GHS' | 'KES'
+  success      Boolean
+  latencyMs    Int?
+  errorMessage String?
+  checkedAt    DateTime @default(now())
+
+  @@index([provider, currency, checkedAt])
+  @@map("provider_health_logs")
+}
+
+// ── NEW: Dead-letter queue tracking ──────────────────────────
+
+model DeadLetterOrder {
+  id            String   @id @default(uuid())
+  orderId       String   @unique
+  recordId      String?  // Sui EscrowRecord object ID
+  reason        String
+  retryCount    Int      @default(0)
+  resolvedAt    DateTime?
+  resolvedBy    String?
+  createdAt     DateTime @default(now())
+
+  @@map("dead_letter_orders")
+}

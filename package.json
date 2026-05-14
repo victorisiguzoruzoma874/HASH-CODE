@@ -1,0 +1,35 @@
+{
+  "name": "hashpay-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "HashPay Global — DeFi payments platform. SUI + Ethereum ecosystem.",
+  "workspaces": [
+    "frontend",
+    "backend",
+    "contracts/evm"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev --workspace=frontend\" \"npm run dev --workspace=backend\"",
+    "dev:frontend": "npm run dev --workspace=frontend",
+    "dev:backend": "npm run dev --workspace=backend",
+    "build": "npm run build --workspace=frontend && npm run build --workspace=backend",
+    "build:frontend": "npm run build --workspace=frontend",
+    "build:backend": "npm run build --workspace=backend",
+    "test": "npm run test --workspace=backend && npm run test --workspace=contracts/evm",
+    "test:contracts": "npm run test --workspace=contracts/evm",
+    "compile:move": "cd contracts/move && aptos move compile",
+    "test:move": "cd contracts/move && aptos move test",
+    "lint": "npm run lint --workspace=frontend && npm run lint --workspace=backend",
+    "typecheck": "npm run typecheck --workspace=frontend && npm run typecheck --workspace=backend"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "dependencies": {
+    "@mysten/sui": "^2.16.2"
+  }
+}
