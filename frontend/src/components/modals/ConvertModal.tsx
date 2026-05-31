@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   X, ChevronDown, ArrowRight, Shield, CheckCircle,
-  AlertTriangle, Loader2, ExternalLink, RefreshCw,
-  Building2, Hash, Zap, Info
+  Loader2, ExternalLink,
+  Building2, Zap, Info
 } from 'lucide-react'
 import { useStore } from '../../store/useStore'
 import type { EscrowStatus } from '../../store/useStore'
@@ -27,8 +27,8 @@ const BANKS = [
 
 // Simulated escrow pipeline steps
 const PIPELINE: { status: EscrowStatus; label: string; detail: string; ms: number }[] = [
-  { status: 'depositing',  label: 'Depositing to escrow',       detail: 'Calling swap_manager::swap_and_escrow() on-chain…',          ms: 1800 },
-  { status: 'confirming',  label: 'Confirming on-chain',        detail: 'Waiting for Move event DepositReceived to emit…',            ms: 2200 },
+  { status: 'depositing',  label: 'Depositing to escrow',       detail: 'Executing PTB: swap_manager::swap_and_escrow() on Sui…',    ms: 1800 },
+  { status: 'confirming',  label: 'Confirming on-chain',        detail: 'Waiting for Sui Move event DepositReceived to emit…',        ms: 2200 },
   { status: 'paying_out',  label: 'Triggering fiat payout',     detail: 'Backend calling Flutterwave /transfers API → NGN…',          ms: 2500 },
   { status: 'completed',   label: 'Settlement complete',        detail: 'Funds sent to your bank account. Payout ref stored.',        ms: 0    },
 ]
@@ -43,16 +43,6 @@ const statusColor: Record<EscrowStatus, string> = {
   refunded:   '#F59E0B',
 }
 
-// Pipeline step icons — used in step indicator rendering below
-void ({
-  idle:       <Hash size={14} />,
-  depositing: <Loader2 size={14} className="animate-spin" />,
-  confirming: <Loader2 size={14} className="animate-spin" />,
-  paying_out: <Loader2 size={14} className="animate-spin" />,
-  completed:  <CheckCircle size={14} />,
-  failed:     <AlertTriangle size={14} />,
-  refunded:   <RefreshCw size={14} />,
-} satisfies Record<EscrowStatus, React.ReactNode>)
 
 export const ConvertModal: React.FC<ConvertModalProps> = ({ isOpen, onClose }) => {
   const submitEscrowOrder  = useStore(s => s.submitEscrowOrder)
@@ -111,7 +101,7 @@ export const ConvertModal: React.FC<ConvertModalProps> = ({ isOpen, onClose }) =
       currency: 'NGN',
       bankName: bank,
       accountNumber: accountNo,
-      aptosEvent: `DepositReceived(0x123, ${amount}, ${asset.symbol}, pending)`,
+      aptosEvent: `hashpay::escrow::DepositReceived { sender: 0x123, amount: ${amount}, asset: ${asset.symbol} }`,
     })
     setStep('pipeline')
     setPipelineStep(0)
@@ -173,8 +163,8 @@ export const ConvertModal: React.FC<ConvertModalProps> = ({ isOpen, onClose }) =
                 <div className="flex gap-2.5 p-3 bg-[#4361EE]/10 border border-[#4361EE]/20 rounded-[10px]">
                   <Info size={14} className="text-[#4361EE] flex-shrink-0 mt-0.5" />
                   <p className="text-[11px] text-[#94A3B8] leading-relaxed">
-                    <span className="text-white font-medium">Hybrid settlement:</span> Your crypto is swapped on-chain via Move module
-                    (Liquidswap DEX), locked in escrow, then our backend triggers NGN payout via Flutterwave.
+                    <span className="text-white font-medium">Hybrid settlement:</span> Your crypto is swapped on-chain via Sui Move package
+                    (Cetus DEX), locked in escrow, then our backend triggers NGN payout via Flutterwave.
                   </p>
                 </div>
 
@@ -313,9 +303,9 @@ export const ConvertModal: React.FC<ConvertModalProps> = ({ isOpen, onClose }) =
                   <div className="text-[11px] font-medium tracking-[0.08em] uppercase text-[#94A3B8] mb-3">Settlement Flow</div>
                   <div className="flex items-center gap-0">
                     {[
-                      { label: 'Swap on DEX', sub: 'Liquidswap', color: '#4361EE' },
-                      { label: 'Escrow Lock', sub: 'Move module', color: '#A855F7' },
-                      { label: 'Event Emitted', sub: 'Aptos Indexer', color: '#F59E0B' },
+                      { label: 'Swap on DEX', sub: 'Cetus DEX',  color: '#4361EE' },
+                      { label: 'Escrow Lock', sub: 'Sui Move',   color: '#A855F7' },
+                      { label: 'Event Emitted', sub: 'Sui Indexer', color: '#F59E0B' },
                       { label: 'NGN Payout', sub: 'Flutterwave', color: '#39FF14' },
                     ].map((node, i, arr) => (
                       <React.Fragment key={node.label}>
@@ -429,14 +419,14 @@ export const ConvertModal: React.FC<ConvertModalProps> = ({ isOpen, onClose }) =
                 {/* Move event log */}
                 <div className="bg-[#0B0F1A] rounded-[10px] p-3 border border-white/[0.06]">
                   <div className="text-[10px] font-medium tracking-[0.08em] uppercase text-[#4B5563] mb-2">
-                    Move Event Log
+                    Sui Event Log
                   </div>
                   <div className="font-mono text-[11px] text-[#39FF14] leading-relaxed">
-                    <div className="text-[#4B5563]">// Aptos Indexer · GraphQL subscription</div>
+                    <div className="text-[#4B5563]">// Sui Indexer · queryEvents subscription</div>
                     <div className="mt-1">{activeOrder.aptosEvent ?? 'Waiting for event…'}</div>
                     {pipelineStep >= 1 && (
                       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-[#A855F7] mt-0.5">
-                        escrow::deposit() → USDC locked in resource account
+                        escrow::deposit() → USDC locked in shared object vault
                       </motion.div>
                     )}
                     {pipelineStep >= 2 && (

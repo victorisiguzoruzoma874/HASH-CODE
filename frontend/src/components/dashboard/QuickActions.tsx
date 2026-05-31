@@ -5,14 +5,14 @@ import { useStore } from '../../store/useStore'
 import type { ModalType } from '../../store/useStore'
 
 const actions = [
-  { id: 'send',     label: 'Send',     icon: Send,           accent: '#3B82F6' },
-  { id: 'receive',  label: 'Receive',  icon: Download,       accent: '#22C55E' },
-  { id: 'exchange', label: 'Exchange', icon: Repeat2,        accent: '#06B6D4' },
-  { id: 'convert',  label: 'Convert',  icon: ArrowRightLeft, accent: '#8B5CF6' },
-  { id: 'scan',     label: 'Scan',     icon: QrCode,         accent: '#3B82F6' },
-  { id: 'bill',     label: 'Bill Pay', icon: Receipt,        accent: '#F59E0B' },
-  { id: 'airtime',  label: 'Airtime',  icon: Phone,          accent: '#06B6D4' },
-  { id: 'data',     label: 'Data',     icon: Wifi,           accent: '#8B5CF6' },
+  { id: 'send',     label: 'Send',     icon: Send,           bg: '#E8EFFE', color: '#0B50D4' },
+  { id: 'receive',  label: 'Receive',  icon: Download,       bg: '#E4F7EE', color: '#057A4B' },
+  { id: 'exchange', label: 'Exchange', icon: Repeat2,        bg: '#E0F5FA', color: '#0891B2' },
+  { id: 'convert',  label: 'Convert',  icon: ArrowRightLeft, bg: '#F3EEFF', color: '#7C3AED' },
+  { id: 'scan',     label: 'Scan',     icon: QrCode,         bg: '#E8EFFE', color: '#0B50D4' },
+  { id: 'bill',     label: 'Bill Pay', icon: Receipt,        bg: '#FEF3E2', color: '#B45309' },
+  { id: 'airtime',  label: 'Airtime',  icon: Phone,          bg: '#E0F5FA', color: '#0891B2' },
+  { id: 'data',     label: 'Data',     icon: Wifi,           bg: '#F3EEFF', color: '#7C3AED' },
 ] as const
 
 export const QuickActions: React.FC = () => {
@@ -28,16 +28,19 @@ export const QuickActions: React.FC = () => {
   }
 
   return (
-    <div className="rounded-[20px] p-5" style={{ background: '#0F172A', border: '1px solid #1E293B' }}>
+    <div
+      className="rounded-2xl p-5 bg-white"
+      style={{ border: '1px solid #DDE6F2', boxShadow: '0 1px 4px rgba(10,25,41,0.07)' }}
+    >
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h3 className="text-[14px] font-semibold" style={{ color: '#F8FAFC' }}>Quick Actions</h3>
-          <p className="text-[11px] mt-0.5" style={{ color: '#64748B' }}>Tap to get started</p>
+          <h3 className="text-[15px] font-black" style={{ color: '#0A1929' }}>Quick Actions</h3>
+          <p className="text-[12px] font-semibold mt-0.5" style={{ color: '#7A97B4' }}>Tap to get started</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-4 gap-2">
-        {actions.map(({ id, label, icon: Icon, accent }, i) => (
+      <div className="grid grid-cols-8 gap-2">
+        {actions.map(({ id, label, icon: Icon, bg, color }, i) => (
           <motion.button
             key={id}
             initial={{ opacity: 0, y: 8 }}
@@ -46,24 +49,26 @@ export const QuickActions: React.FC = () => {
             whileHover={{ scale: 1.04, y: -2 }}
             whileTap={{ scale: 0.97 }}
             onClick={() => handleAction(id)}
-            className="flex flex-col items-center gap-2 py-3.5 px-2 rounded-[14px] transition-all duration-200 group"
-            style={{ background: '#162033', border: '1px solid #1E293B' }}
+            className="flex flex-col items-center gap-2 py-3.5 px-2 rounded-xl transition-all duration-200 bg-white"
+            style={{ border: '1px solid #DDE6F2' }}
             onMouseEnter={e => {
-              e.currentTarget.style.borderColor = `${accent}40`
-              e.currentTarget.style.background = `${accent}0A`
+              e.currentTarget.style.borderColor = color + '55'
+              e.currentTarget.style.background = bg
+              e.currentTarget.style.boxShadow = `0 4px 16px ${color}18`
             }}
             onMouseLeave={e => {
-              e.currentTarget.style.borderColor = '#1E293B'
-              e.currentTarget.style.background = '#162033'
+              e.currentTarget.style.borderColor = '#DDE6F2'
+              e.currentTarget.style.background = '#fff'
+              e.currentTarget.style.boxShadow = 'none'
             }}
           >
             <div
               className="w-9 h-9 rounded-full flex items-center justify-center transition-all"
-              style={{ background: `${accent}15` }}
+              style={{ background: bg }}
             >
-              <Icon size={15} style={{ color: accent }} />
+              <Icon size={15} style={{ color }} />
             </div>
-            <span className="text-[10px] font-medium whitespace-nowrap" style={{ color: '#64748B' }}>
+            <span className="text-[10px] font-bold whitespace-nowrap" style={{ color: '#7A97B4' }}>
               {label}
             </span>
           </motion.button>

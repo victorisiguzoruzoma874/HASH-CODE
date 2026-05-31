@@ -2,6 +2,7 @@ import React from 'react'
 import { motion } from 'framer-motion'
 import { TrendingUp, Wallet } from 'lucide-react'
 import { useStore } from '../../store/useStore'
+import { useApiStore } from '../../store/useApiStore'
 
 function getGreeting() {
   const h = new Date().getHours()
@@ -12,40 +13,39 @@ function getGreeting() {
 
 export const GreetingBar: React.FC = () => {
   const wallet = useStore(s => s.wallet)
+  const user   = useApiStore(s => s.user)
+
+  const displayName = user?.fullName ?? user?.email ?? (wallet.isConnected ? wallet.address : 'Trader')
+  const firstName   = displayName.split(' ')[0]
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: -6 }}
+      initial={{ opacity: 0, y: -4 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35 }}
-      className="flex items-center justify-between px-6 py-3.5 flex-shrink-0"
-      style={{ borderBottom: '1px solid #1E293B', background: 'rgba(15,23,42,0.5)' }}
+      transition={{ duration: 0.3 }}
+      className="flex items-center justify-between px-5 py-3.5 flex-shrink-0 bg-white"
+      style={{ borderBottom: '1px solid #DDE6F2' }}
     >
-      <div>
-        <span className="text-[12px]" style={{ color: '#64748B' }}>{getGreeting()} — </span>
-        <span className="text-[12px] font-semibold" style={{ color: '#94A3B8' }}>
-          {wallet.isConnected ? wallet.address : 'Welcome back'}
-        </span>
+      <div className="flex items-center gap-2">
+        <span className="text-[14px] font-semibold" style={{ color: '#7A97B4' }}>{getGreeting()},</span>
+        <span className="text-[14px] font-black" style={{ color: '#0A1929' }}>{firstName} 👋</span>
       </div>
 
       <div className="flex items-center gap-2.5">
-        {/* Portfolio change */}
         <div
-          className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold"
-          style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.15)', color: '#22C55E' }}
+          className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[12px] font-bold"
+          style={{ background: '#E4F7EE', color: '#057A4B' }}
         >
           <TrendingUp size={11} />
           +12.4% this week
         </div>
-
-        {/* Balance */}
         <div
-          className="flex items-center gap-2 px-2.5 py-1 rounded-full text-[11px]"
-          style={{ background: '#0F172A', border: '1px solid #1E293B' }}
+          className="flex items-center gap-2 px-3 py-1 rounded-full text-[12px]"
+          style={{ background: '#EEF3FB', border: '1px solid #DDE6F2' }}
         >
-          <Wallet size={11} style={{ color: '#64748B' }} />
-          <span className="font-mono font-medium" style={{ color: '#F8FAFC' }}>{wallet.balance}</span>
-          <span style={{ color: '#64748B' }}>{wallet.balanceUSD}</span>
+          <Wallet size={11} style={{ color: '#7A97B4' }} />
+          <span className="font-mono font-bold" style={{ color: '#0A1929' }}>{wallet.balance}</span>
+          <span className="font-semibold" style={{ color: '#7A97B4' }}>{wallet.balanceUSD}</span>
         </div>
       </div>
     </motion.div>

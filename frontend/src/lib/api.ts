@@ -170,8 +170,8 @@ export const authApi = {
   },
 
   connectWallet: (body: { walletAddress: string; chain: string; signature: string }) => {
-    if (MOCK_MODE) return mockDelay({ user: MOCK_USER })
-    return post<{ user: User }>('/auth/connect-wallet', body)
+    if (MOCK_MODE) return mockDelay({ user: MOCK_USER, token: MOCK_TOKEN })
+    return post<{ user: User; token: string }>('/auth/connect-wallet', body)
   },
 
   me: () => {

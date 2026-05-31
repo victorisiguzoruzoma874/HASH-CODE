@@ -1,47 +1,65 @@
-import React, { useState } from 'react'
+import React, { useState, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, Bell, ChevronDown, User, Settings, LogOut } from 'lucide-react'
+import { Search, Bell, ChevronDown, User, Settings, LogOut, Menu } from 'lucide-react'
 import { HashPayIcon } from '../../components/ui/HashPayLogo'
 import { useStore } from '../../store/useStore'
+import { useApiStore } from '../../store/useApiStore'
+import { useClickOutside } from '../ui/useClickOutside'
 import { useNavigate } from 'react-router-dom'
 
 const dropdownVariants = {
-  hidden:  { opacity: 0, y: 6, scale: 0.97 },
+  hidden:  { opacity: 0, y: 8, scale: 0.97 },
   visible: { opacity: 1, y: 0, scale: 1 },
-  exit:    { opacity: 0, y: 6, scale: 0.97 },
+  exit:    { opacity: 0, y: 8, scale: 0.97 },
 }
 
 export const TopBar: React.FC = () => {
-  const notifications   = useStore(s => s.ui.notifications)
-  const markRead        = useStore(s => s.markNotificationsRead)
+  const notifications    = useStore(s => s.ui.notifications)
+  const markRead         = useStore(s => s.markNotificationsRead)
   const disconnectWallet = useStore(s => s.disconnectWallet)
-  const navigate        = useNavigate()
+  const toggleSidebar    = useStore(s => s.toggleSidebar)
+  const apiLogout        = useApiStore(s => s.logout)
+  const user             = useApiStore(s => s.user)
+  const navigate         = useNavigate()
 
   const [showNotifs, setShowNotifs] = useState(false)
   const [showUser,   setShowUser]   = useState(false)
+
+  const notifsRef = useRef<HTMLDivElement>(null)
+  const userRef   = useRef<HTMLDivElement>(null)
+  useClickOutside(notifsRef, useCallback(() => setShowNotifs(false), []))
+  useClickOutside(userRef,   useCallback(() => setShowUser(false),   []))
 
   const unread = notifications.filter(n => !n.read).length
 
   return (
     <div
-      className="h-14 flex-shrink-0 flex items-center gap-3 px-6 z-20"
-      style={{
-        background: 'rgba(7,17,31,0.85)',
-        backdropFilter: 'blur(20px)',
-        borderBottom: '1px solid #1E293B',
-      }}
+      className="h-14 flex-shrink-0 flex items-center gap-3 px-5 z-20 bg-white"
+      style={{ borderBottom: '1px solid #DDE6F2', boxShadow: '0 1px 4px rgba(10,25,41,0.05)' }}
     >
+      {/* Hamburger */}
+      <button
+        onClick={toggleSidebar}
+        className="lg:hidden p-2 rounded-lg transition-all flex-shrink-0"
+        style={{ color: '#7A97B4' }}
+        onMouseEnter={e => { e.currentTarget.style.background = '#EEF3FB'; e.currentTarget.style.color = '#0A1929' }}
+        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#7A97B4' }}
+        aria-label="Toggle sidebar"
+      >
+        <Menu size={18} />
+      </button>
+
       {/* Search */}
-      <div className="flex-1 relative max-w-[340px]">
-        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: '#334155' }} />
+      <div className="flex-1 relative max-w-[300px]">
+        <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: '#A8BDD4' }} />
         <input
           type="text"
           placeholder="Search tokens, markets…"
-          className="w-full rounded-[10px] pl-9 pr-4 py-2 text-[13px] transition-all"
+          className="w-full rounded-full pl-9 pr-4 py-2 text-[13px] font-semibold transition-all"
           style={{
-            background: '#0F172A',
-            border: '1px solid #1E293B',
-            color: '#F8FAFC',
+            background: '#EEF3FB',
+            border: '1px solid #DDE6F2',
+            color: '#0A1929',
           }}
         />
       </div>
@@ -50,30 +68,30 @@ export const TopBar: React.FC = () => {
 
       {/* Network badge */}
       <div
-        className="flex items-center gap-2 px-3 py-1.5 rounded-[8px]"
-        style={{ background: '#0F172A', border: '1px solid #1E293B' }}
+        className="flex items-center gap-2 px-3 py-1.5 rounded-full"
+        style={{ background: '#E4F7EE', border: '1px solid rgba(5,122,75,0.2)' }}
       >
-        <div className="w-1.5 h-1.5 rounded-full bg-[#22C55E] animate-pulse" />
-        <span className="text-[11px] font-semibold tracking-[0.06em] uppercase" style={{ color: '#64748B' }}>
-          ETH Mainnet
+        <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#057A4B' }} />
+        <span className="text-[11px] font-bold tracking-[0.05em]" style={{ color: '#057A4B' }}>
+          Sui Mainnet
         </span>
       </div>
 
       {/* Notifications */}
-      <div className="relative">
+      <div className="relative" ref={notifsRef}>
         <button
           onClick={() => { setShowNotifs(!showNotifs); setShowUser(false); if (!showNotifs) markRead() }}
-          className="relative p-2 rounded-[8px] transition-all"
-          style={{ color: '#64748B' }}
-          onMouseEnter={e => { e.currentTarget.style.background = '#0F172A'; e.currentTarget.style.color = '#F8FAFC' }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#64748B' }}
+          className="relative p-2 rounded-lg transition-all"
+          style={{ color: '#7A97B4' }}
+          onMouseEnter={e => { e.currentTarget.style.background = '#EEF3FB'; e.currentTarget.style.color = '#0A1929' }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#7A97B4' }}
           aria-label="Notifications"
         >
           <Bell size={17} />
           {unread > 0 && (
             <span
               className="absolute top-1 right-1 w-3.5 h-3.5 rounded-full text-[8px] font-bold text-white flex items-center justify-center"
-              style={{ background: '#EF4444' }}
+              style={{ background: '#C5202B' }}
             >
               {unread}
             </span>
@@ -86,26 +104,26 @@ export const TopBar: React.FC = () => {
               variants={dropdownVariants}
               initial="hidden" animate="visible" exit="exit"
               transition={{ duration: 0.15, ease: 'easeOut' }}
-              className="absolute right-0 top-full mt-2 w-[320px] rounded-[16px] shadow-2xl overflow-hidden z-50"
-              style={{ background: '#0F172A', border: '1px solid #1E293B' }}
+              className="absolute right-0 top-full mt-2 w-[320px] rounded-2xl overflow-hidden z-50 bg-white"
+              style={{ border: '1px solid #DDE6F2', boxShadow: '0 16px 48px rgba(10,25,41,0.12)' }}
             >
-              <div className="px-4 py-3 flex items-center justify-between" style={{ borderBottom: '1px solid #1E293B' }}>
-                <span className="text-[13px] font-semibold" style={{ color: '#F8FAFC' }}>Notifications</span>
-                <span className="text-[11px] font-medium" style={{ color: '#3B82F6' }}>Mark all read</span>
+              <div className="px-4 py-3 flex items-center justify-between" style={{ borderBottom: '1px solid #DDE6F2' }}>
+                <span className="text-[13px] font-bold" style={{ color: '#0A1929' }}>Notifications</span>
+                <span className="text-[11px] font-bold cursor-pointer" style={{ color: '#0B50D4' }}>Mark all read</span>
               </div>
               {notifications.map(n => (
                 <div
                   key={n.id}
-                  className="px-4 py-3 flex items-start gap-3 transition-colors"
+                  className="px-4 py-3 flex items-start gap-3"
                   style={{
-                    borderBottom: '1px solid #162033',
-                    background: !n.read ? 'rgba(59,130,246,0.04)' : 'transparent',
+                    borderBottom: '1px solid #EEF3FB',
+                    background: !n.read ? '#F4F8FD' : 'transparent',
                   }}
                 >
                   {!n.read && (
-                    <div className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0" style={{ background: '#3B82F6' }} />
+                    <div className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0" style={{ background: '#0B50D4' }} />
                   )}
-                  <p className="text-[12px] leading-relaxed" style={{ color: '#94A3B8' }}>{n.message}</p>
+                  <p className="text-[12px] font-semibold leading-relaxed" style={{ color: '#3D5A78' }}>{n.message}</p>
                 </div>
               ))}
             </motion.div>
@@ -113,17 +131,17 @@ export const TopBar: React.FC = () => {
         </AnimatePresence>
       </div>
 
-      {/* User avatar */}
-      <div className="relative">
+      {/* User */}
+      <div className="relative" ref={userRef}>
         <button
           onClick={() => { setShowUser(!showUser); setShowNotifs(false) }}
-          className="flex items-center gap-2 px-2 py-1.5 rounded-[10px] transition-all"
+          className="flex items-center gap-2 px-2 py-1.5 rounded-xl transition-all"
           style={{ border: '1px solid transparent' }}
-          onMouseEnter={e => { e.currentTarget.style.background = '#0F172A'; e.currentTarget.style.borderColor = '#1E293B' }}
+          onMouseEnter={e => { e.currentTarget.style.background = '#EEF3FB'; e.currentTarget.style.borderColor = '#DDE6F2' }}
           onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent' }}
         >
           <HashPayIcon size={26} />
-          <ChevronDown size={13} style={{ color: '#64748B' }} />
+          <ChevronDown size={13} style={{ color: '#7A97B4' }} />
         </button>
 
         <AnimatePresence>
@@ -132,12 +150,16 @@ export const TopBar: React.FC = () => {
               variants={dropdownVariants}
               initial="hidden" animate="visible" exit="exit"
               transition={{ duration: 0.15, ease: 'easeOut' }}
-              className="absolute right-0 top-full mt-2 w-[200px] rounded-[16px] shadow-2xl overflow-hidden z-50"
-              style={{ background: '#0F172A', border: '1px solid #1E293B' }}
+              className="absolute right-0 top-full mt-2 w-[210px] rounded-2xl overflow-hidden z-50 bg-white"
+              style={{ border: '1px solid #DDE6F2', boxShadow: '0 16px 48px rgba(10,25,41,0.12)' }}
             >
-              <div className="px-4 py-3" style={{ borderBottom: '1px solid #1E293B' }}>
-                <div className="text-[13px] font-semibold" style={{ color: '#F8FAFC' }}>My Account</div>
-                <div className="text-[11px] font-mono mt-0.5" style={{ color: '#64748B' }}>0x123...4567</div>
+              <div className="px-4 py-3" style={{ borderBottom: '1px solid #DDE6F2' }}>
+                <div className="text-[13px] font-bold" style={{ color: '#0A1929' }}>
+                  {user?.fullName ?? 'My Account'}
+                </div>
+                <div className="text-[11px] font-mono mt-0.5 truncate font-semibold" style={{ color: '#7A97B4' }}>
+                  {user?.suiAddress ?? user?.evmAddress ?? user?.email ?? '—'}
+                </div>
               </div>
               {[
                 { icon: User,     label: 'Profile' },
@@ -145,21 +167,21 @@ export const TopBar: React.FC = () => {
               ].map(({ icon: Icon, label }) => (
                 <button
                   key={label}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 text-[13px] transition-all"
-                  style={{ color: '#94A3B8' }}
-                  onMouseEnter={e => { e.currentTarget.style.background = '#162033'; e.currentTarget.style.color = '#F8FAFC' }}
-                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#94A3B8' }}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-[13px] font-semibold transition-all"
+                  style={{ color: '#3D5A78' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = '#F4F8FD'; e.currentTarget.style.color = '#0A1929' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#3D5A78' }}
                 >
                   <Icon size={14} />
                   {label}
                 </button>
               ))}
-              <div style={{ borderTop: '1px solid #1E293B' }} />
+              <div style={{ borderTop: '1px solid #DDE6F2' }} />
               <button
-                onClick={() => { disconnectWallet(); navigate('/login') }}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-[13px] transition-all"
-                style={{ color: '#EF4444' }}
-                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.08)' }}
+                onClick={() => { apiLogout(); disconnectWallet(); navigate('/login') }}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-[13px] font-bold transition-all"
+                style={{ color: '#C5202B' }}
+                onMouseEnter={e => { e.currentTarget.style.background = '#FDECEA' }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
               >
                 <LogOut size={14} />

@@ -2,7 +2,8 @@ import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { User, Mail, Lock, Eye, EyeOff, Shield, Cpu, AlertCircle } from 'lucide-react'
-import { HashPayLogo } from '../components/ui/HashPayLogo'
+import { Spinner } from '../components/ui/Spinner'
+import { HashPayLogo, HashPayIcon } from '../components/ui/HashPayLogo'
 import { useApiStore } from '../store/useApiStore'
 
 export const Signup: React.FC = () => {
@@ -17,7 +18,7 @@ export const Signup: React.FC = () => {
   const register    = useApiStore(s => s.register)
   const authLoading = useApiStore(s => s.authLoading)
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!agreed) return
     setError('')
@@ -30,156 +31,230 @@ export const Signup: React.FC = () => {
   }
 
   const strength = password.length === 0 ? 0 : password.length < 6 ? 1 : password.length < 10 ? 2 : password.length < 14 ? 3 : 4
-  const strengthColors = ['#334155', '#EF4444', '#F59E0B', '#3B82F6', '#22C55E']
-  const strengthLabels = ['', 'Weak', 'Fair', 'Good', 'Strong']
+  const strengthColors    = ['#DDE6F2', '#C5202B', '#B45309', '#0B50D4', '#057A4B']
+  const strengthLabels    = ['', 'Weak', 'Fair', 'Good', 'Strong']
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%',
+    padding: '14px 16px 14px 44px',
+    fontSize: 14,
+    fontWeight: 500,
+    borderRadius: 12,
+    border: '1.5px solid #C4D4E8',
+    background: '#F8FAFD',
+    color: '#0A1929',
+    outline: 'none',
+  }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4 py-12" style={{ background: '#07111F' }}>
-      <div className="fixed inset-0 pointer-events-none overflow-hidden" aria-hidden>
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] rounded-full opacity-[0.05]"
-          style={{ background: 'radial-gradient(circle, #06B6D4, transparent)' }} />
-      </div>
+    <div className="min-h-screen flex flex-col" style={{ background: '#EEF3FB' }}>
 
-      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }} className="relative z-10 mb-2">
-        <HashPayLogo size={40} />
-      </motion.div>
-
-      <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-        transition={{ delay: 0.15, duration: 0.4 }}
-        className="relative z-10 text-[13px] text-center mb-8 tracking-wide" style={{ color: '#64748B' }}>
-        Enter the Ether of Decentralized Finance
-      </motion.p>
-
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2, duration: 0.4, ease: 'easeOut' }}
-        className="relative z-10 w-full max-w-[440px] rounded-[24px] p-8"
-        style={{ background: '#0F172A', border: '1px solid #1E293B' }}>
-
-        <div className="mb-6">
-          <h2 className="text-[20px] font-bold mb-1" style={{ color: '#F8FAFC' }}>Create Account</h2>
-          <p className="text-[13px]" style={{ color: '#64748B' }}>Join the next generation of kinetic asset management.</p>
+      {/* Full-width Nav */}
+      <nav className="w-full bg-white" style={{ borderBottom: '1px solid #DDE6F2', boxShadow: '0 1px 3px rgba(10,25,41,0.06)' }}>
+        <div className="max-w-[1200px] mx-auto px-8 h-[68px] flex items-center justify-between">
+          <Link to="/"><HashPayLogo size={34} /></Link>
+          <div className="flex items-center gap-1 p-1 rounded-full" style={{ background: '#EEF3FB', border: '1px solid #DDE6F2' }}>
+            <Link to="/login" className="px-5 py-2 rounded-full text-[13px] font-bold transition-colors" style={{ color: '#7A97B4' }}
+              onMouseEnter={e => { e.currentTarget.style.color = '#0B50D4' }}
+              onMouseLeave={e => { e.currentTarget.style.color = '#7A97B4' }}>
+              Log In
+            </Link>
+            <span className="px-5 py-2 rounded-full text-[13px] font-bold" style={{ background: '#0B50D4', color: '#fff' }}>
+              Sign Up
+            </span>
+          </div>
         </div>
+      </nav>
 
-        {/* Error banner */}
-        {error && (
-          <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
-            className="flex items-center gap-2 p-3 rounded-[10px] mb-4"
-            style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)' }}>
-            <AlertCircle size={14} style={{ color: '#EF4444', flexShrink: 0 }} />
-            <p className="text-[12px]" style={{ color: '#EF4444' }}>{error}</p>
-          </motion.div>
-        )}
-
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          {/* Full Name */}
-          <div>
-            <label className="text-[10px] font-semibold tracking-[0.1em] uppercase block mb-1.5" style={{ color: '#64748B' }}>Full Name</label>
-            <div className="relative">
-              <User size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: '#64748B' }} />
-              <input type="text" placeholder="Satoshi Nakamoto" value={name}
-                onChange={e => setName(e.target.value)} required
-                className="w-full rounded-[12px] pl-10 pr-4 py-3 text-[14px] transition-all"
-                style={{ background: '#162033', border: '1px solid #1E293B', color: '#F8FAFC' }} />
+      {/* Centered card */}
+      <div className="flex-1 flex items-center justify-center px-4 py-16">
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, ease: 'easeOut' }}
+          className="w-full"
+          style={{ maxWidth: 520 }}
+        >
+          {/* Above-card header */}
+          <div className="text-center mb-8">
+            <div className="flex justify-center mb-4">
+              <HashPayIcon size={52} />
             </div>
+            <h1 style={{ fontSize: 26, fontWeight: 900, color: '#0A1929', marginBottom: 6 }}>
+              Create your account
+            </h1>
+            <p style={{ fontSize: 15, fontWeight: 500, color: '#7A97B4' }}>
+              Free forever. No credit card required.
+            </p>
           </div>
 
-          {/* Email */}
-          <div>
-            <label className="text-[10px] font-semibold tracking-[0.1em] uppercase block mb-1.5" style={{ color: '#64748B' }}>Email Address</label>
-            <div className="relative">
-              <Mail size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: '#64748B' }} />
-              <input type="email" placeholder="name@kinetic.io" value={email}
-                onChange={e => setEmail(e.target.value)} required
-                className="w-full rounded-[12px] pl-10 pr-4 py-3 text-[14px] transition-all"
-                style={{ background: '#162033', border: '1px solid #1E293B', color: '#F8FAFC' }} />
-            </div>
-          </div>
+          <div
+            className="bg-white rounded-3xl"
+            style={{
+              padding: '44px 44px',
+              boxShadow: '0 4px 24px rgba(10,25,41,0.09), 0 1px 4px rgba(10,25,41,0.05)',
+              border: '1px solid #DDE6F2',
+            }}
+          >
+            {/* Error banner */}
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
+                className="flex items-start gap-3 rounded-2xl"
+                style={{ padding: '14px 16px', background: '#FDECEA', border: '1px solid rgba(197,32,43,0.18)', marginBottom: 24 }}
+              >
+                <AlertCircle size={15} style={{ color: '#C5202B', flexShrink: 0, marginTop: 1 }} />
+                <p style={{ fontSize: 13, fontWeight: 600, color: '#C5202B' }}>{error}</p>
+              </motion.div>
+            )}
 
-          {/* Password */}
-          <div>
-            <label className="text-[10px] font-semibold tracking-[0.1em] uppercase block mb-1.5" style={{ color: '#64748B' }}>Password</label>
-            <div className="relative">
-              <Lock size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: '#64748B' }} />
-              <input type={showPass ? 'text' : 'password'} placeholder="Min. 8 characters" value={password}
-                onChange={e => setPassword(e.target.value)} required minLength={8}
-                className="w-full rounded-[12px] pl-10 pr-10 py-3 text-[14px] transition-all"
-                style={{ background: '#162033', border: '1px solid #1E293B', color: '#F8FAFC' }} />
-              <button type="button" onClick={() => setShowPass(!showPass)}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 transition-colors" style={{ color: '#64748B' }}>
-                {showPass ? <EyeOff size={14} /> : <Eye size={14} />}
-              </button>
-            </div>
-            {password && (
-              <div className="mt-2">
-                <div className="flex gap-1 mb-1">
-                  {[1,2,3,4].map(i => (
-                    <div key={i} className="h-1 flex-1 rounded-full transition-all duration-300"
-                      style={{ background: i <= strength ? strengthColors[strength] : '#1E293B' }} />
-                  ))}
-                </div>
-                <div className="text-[10px] font-medium" style={{ color: strengthColors[strength] }}>
-                  {strengthLabels[strength]}
+            <form onSubmit={handleSubmit}>
+              {/* Full Name */}
+              <div style={{ marginBottom: 18 }}>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#3D5A78', marginBottom: 8 }}>
+                  Full Name
+                </label>
+                <div className="relative">
+                  <User size={15} className="absolute top-1/2 -translate-y-1/2" style={{ left: 16, color: '#A8BDD4' }} />
+                  <input
+                    type="text" placeholder="Your full name" value={name}
+                    onChange={e => setName(e.target.value)} required
+                    style={inputStyle}
+                    onFocus={e => { e.currentTarget.style.borderColor = '#0B50D4'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(11,80,212,0.1)' }}
+                    onBlur={e => { e.currentTarget.style.borderColor = '#C4D4E8'; e.currentTarget.style.boxShadow = 'none' }}
+                  />
                 </div>
               </div>
-            )}
-          </div>
 
-          {/* Terms */}
-          <label className="flex items-start gap-3 cursor-pointer">
-            <div className="relative mt-0.5 flex-shrink-0">
-              <input type="checkbox" checked={agreed} onChange={e => setAgreed(e.target.checked)} className="sr-only" />
-              <div className="w-4 h-4 rounded-[4px] border flex items-center justify-center transition-all"
-                style={agreed ? { background: '#22C55E', borderColor: '#22C55E' } : { background: 'transparent', borderColor: '#1E293B' }}>
-                {agreed && (
-                  <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-                    <path d="M1 4L3.5 6.5L9 1" stroke="#07111F" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
+              {/* Email */}
+              <div style={{ marginBottom: 18 }}>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#3D5A78', marginBottom: 8 }}>
+                  Email Address
+                </label>
+                <div className="relative">
+                  <Mail size={15} className="absolute top-1/2 -translate-y-1/2" style={{ left: 16, color: '#A8BDD4' }} />
+                  <input
+                    type="email" placeholder="you@example.com" value={email}
+                    onChange={e => setEmail(e.target.value)} required
+                    style={inputStyle}
+                    onFocus={e => { e.currentTarget.style.borderColor = '#0B50D4'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(11,80,212,0.1)' }}
+                    onBlur={e => { e.currentTarget.style.borderColor = '#C4D4E8'; e.currentTarget.style.boxShadow = 'none' }}
+                  />
+                </div>
+              </div>
+
+              {/* Password */}
+              <div style={{ marginBottom: 24 }}>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#3D5A78', marginBottom: 8 }}>
+                  Password
+                </label>
+                <div className="relative">
+                  <Lock size={15} className="absolute top-1/2 -translate-y-1/2" style={{ left: 16, color: '#A8BDD4' }} />
+                  <input
+                    type={showPass ? 'text' : 'password'} placeholder="Min. 8 characters" value={password}
+                    onChange={e => setPassword(e.target.value)} required minLength={8}
+                    style={{ ...inputStyle, paddingRight: 48 }}
+                    onFocus={e => { e.currentTarget.style.borderColor = '#0B50D4'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(11,80,212,0.1)' }}
+                    onBlur={e => { e.currentTarget.style.borderColor = '#C4D4E8'; e.currentTarget.style.boxShadow = 'none' }}
+                  />
+                  <button type="button" onClick={() => setShowPass(!showPass)}
+                    className="absolute top-1/2 -translate-y-1/2" style={{ right: 16, color: '#A8BDD4' }}>
+                    {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+
+                {password && (
+                  <div style={{ marginTop: 10 }}>
+                    <div className="flex gap-1.5" style={{ marginBottom: 6 }}>
+                      {[1,2,3,4].map(i => (
+                        <div key={i} style={{
+                          height: 4, flex: 1, borderRadius: 99,
+                          background: i <= strength ? strengthColors[strength] : '#DDE6F2',
+                          transition: 'background 0.3s',
+                        }} />
+                      ))}
+                    </div>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: strengthColors[strength] }}>
+                      {strengthLabels[strength]}
+                    </span>
+                  </div>
                 )}
               </div>
+
+              {/* Terms */}
+              <label className="flex items-start gap-3 cursor-pointer" style={{ marginBottom: 28 }}>
+                <div className="relative flex-shrink-0" style={{ marginTop: 2 }}>
+                  <input type="checkbox" checked={agreed} onChange={e => setAgreed(e.target.checked)} className="sr-only" />
+                  <div
+                    className="flex items-center justify-center transition-all"
+                    style={{
+                      width: 18, height: 18, borderRadius: 5,
+                      border: agreed ? '2px solid #057A4B' : '2px solid #C4D4E8',
+                      background: agreed ? '#057A4B' : '#fff',
+                    }}
+                  >
+                    {agreed && (
+                      <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                        <path d="M1 4L3.5 6.5L9 1" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    )}
+                  </div>
+                </div>
+                <span style={{ fontSize: 13, fontWeight: 500, lineHeight: 1.6, color: '#3D5A78' }}>
+                  I agree to the{' '}
+                  <a href="#" style={{ color: '#0B50D4', fontWeight: 700, textDecoration: 'none' }}>Terms of Service</a>
+                  {' '}and{' '}
+                  <a href="#" style={{ color: '#0B50D4', fontWeight: 700, textDecoration: 'none' }}>Privacy Policy</a>
+                </span>
+              </label>
+
+              <motion.button
+                whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}
+                type="submit" disabled={authLoading || !agreed}
+                className="w-full flex items-center justify-center gap-2 rounded-full font-bold transition-all"
+                style={{
+                  padding: '15px 24px',
+                  fontSize: 15,
+                  background: '#0B50D4',
+                  color: '#fff',
+                  boxShadow: (!authLoading && agreed) ? '0 4px 16px rgba(11,80,212,0.28)' : 'none',
+                  opacity: (!authLoading && agreed) ? 1 : 0.5,
+                  marginBottom: 20,
+                }}
+                onMouseEnter={e => { if (!authLoading && agreed) e.currentTarget.style.background = '#0840AA' }}
+                onMouseLeave={e => { e.currentTarget.style.background = '#0B50D4' }}
+              >
+                {authLoading ? <><Spinner size={17} />Creating Account…</> : 'Create Free Account'}
+              </motion.button>
+            </form>
+
+            <p className="text-center" style={{ fontSize: 14, fontWeight: 600, color: '#7A97B4' }}>
+              Already have an account?{' '}
+              <Link to="/login" style={{ color: '#0B50D4', fontWeight: 800, textDecoration: 'none' }}>Log in</Link>
+            </p>
+
+            {/* Trust badges */}
+            <div className="flex items-center justify-center gap-8" style={{ marginTop: 28, paddingTop: 24, borderTop: '1px solid #EEF3FB' }}>
+              {[
+                { icon: <Shield size={13} style={{ color: '#057A4B' }} />, label: 'AES-256 Encrypted' },
+                { icon: <Cpu    size={13} style={{ color: '#0B50D4' }} />, label: 'Non-Custodial' },
+              ].map(b => (
+                <div key={b.label} className="flex items-center gap-2" style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#A8BDD4' }}>
+                  {b.icon}{b.label}
+                </div>
+              ))}
             </div>
-            <span className="text-[12px] leading-relaxed" style={{ color: '#64748B' }}>
-              I agree to the <a href="#" style={{ color: '#3B82F6' }}>Terms of Service</a> and{' '}
-              <a href="#" style={{ color: '#3B82F6' }}>Privacy Policy</a> regarding my digital asset sovereignty.
-            </span>
-          </label>
+          </div>
 
-          <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-            type="submit" disabled={authLoading || !agreed}
-            className="w-full py-3.5 rounded-[12px] text-[14px] font-semibold flex items-center justify-center gap-2 transition-all disabled:opacity-40 mt-1"
-            style={{ background: 'linear-gradient(135deg, #8B5CF6, #06B6D4)', color: '#fff' }}>
-            {authLoading ? (
-              <><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-              </svg>Creating Account…</>
-            ) : 'Create Account'}
-          </motion.button>
-        </form>
-
-        <p className="text-center text-[13px] mt-5" style={{ color: '#64748B' }}>
-          Already have an account?{' '}
-          <Link to="/login" className="font-semibold" style={{ color: '#3B82F6' }}>Sign in</Link>
-        </p>
-
-        <div className="flex items-center justify-center gap-4 mt-6 pt-5" style={{ borderTop: '1px solid #1E293B' }}>
-          {[
-            { icon: <Shield size={11} style={{ color: '#22C55E' }} />, label: 'AES-256 Encrypted' },
-            { icon: <Cpu    size={11} style={{ color: '#3B82F6' }} />, label: 'Decentralized Auth' },
-          ].map(b => (
-            <div key={b.label} className="flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.08em] uppercase" style={{ color: '#334155' }}>
-              {b.icon}{b.label}
-            </div>
-          ))}
-        </div>
-      </motion.div>
-
-      <div className="relative z-10 mt-8 flex items-center gap-4 text-[12px]" style={{ color: '#334155' }}>
-        {['Privacy Policy', 'Terms of Service', 'Security Audit'].map(l => (
-          <a key={l} href="#" className="transition-colors hover:text-[#64748B]">{l}</a>
-        ))}
+          <div className="flex items-center justify-center gap-6 mt-6">
+            {['Privacy Policy', 'Terms of Service', 'Security Audit'].map(l => (
+              <a key={l} href="#" style={{ fontSize: 12, fontWeight: 600, color: '#A8BDD4', textDecoration: 'none' }}
+                onMouseEnter={e => { e.currentTarget.style.color = '#0B50D4' }}
+                onMouseLeave={e => { e.currentTarget.style.color = '#A8BDD4' }}>{l}</a>
+            ))}
+          </div>
+        </motion.div>
       </div>
-      <p className="relative z-10 mt-2 text-[11px]" style={{ color: '#334155' }}>© 2024 HashPay Global</p>
     </div>
   )
 }

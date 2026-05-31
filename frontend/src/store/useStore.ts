@@ -73,6 +73,7 @@ interface AppStore {
   setTimeframe: (tf: PortfolioState['timeframe']) => void
   openModal: (modal: ModalType) => void
   closeModal: () => void
+  toggleSidebar: () => void
   markNotificationsRead: () => void
   submitEscrowOrder: (order: Omit<EscrowOrder, 'id' | 'createdAt' | 'status'>) => void
   advanceEscrowStatus: (id: string, status: EscrowStatus, extra?: Partial<EscrowOrder>) => void
@@ -204,6 +205,9 @@ export const useStore = create<AppStore>((set) => ({
   },
   setTimeframe: (tf) => {
     set(s => ({ portfolio: { ...s.portfolio, timeframe: tf, chartData: chartMap[tf] } }))
+  },
+  toggleSidebar: () => {
+    set(s => ({ ui: { ...s.ui, sidebarOpen: !s.ui.sidebarOpen } }))
   },
   openModal: (modal) => {
     set(s => ({ ui: { ...s.ui, activeModal: modal } }))

@@ -6,13 +6,13 @@ import '@mysten/dapp-kit/dist/index.css'
 import './index.css'
 import App from './App'
 
+// @mysten/dapp-kit internally uses react-query — QueryClientProvider is required
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: { retry: 1, staleTime: 30_000 },
   },
 })
 
-// v2 SuiClientProvider requires { url, network } per entry
 const suiNetworks = {
   mainnet: { url: 'https://fullnode.mainnet.sui.io:443', network: 'mainnet' as const },
   testnet: { url: 'https://fullnode.testnet.sui.io:443', network: 'testnet' as const },

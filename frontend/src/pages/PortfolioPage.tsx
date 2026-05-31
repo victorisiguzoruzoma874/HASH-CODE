@@ -3,11 +3,11 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, AreaChart, Area, XAx
 import { TrendingUp, TrendingDown, ArrowUpRight, ArrowDownLeft } from 'lucide-react'
 
 const holdings = [
-  { symbol: 'ETH',  name: 'Ethereum',    amount: '2.45',     usd: '₦13,565,358', change: '+5.2%', positive: true,  pct: 57, color: '#3B82F6' },
-  { symbol: 'USDC', name: 'USD Coin',    amount: '1,429.55', usd: '₦2,237,246',  change: '0.0%',  positive: true,  pct: 9,  color: '#06B6D4' },
-  { symbol: 'LINK', name: 'Chainlink',   amount: '142.00',   usd: '₦4,444,788',  change: '+8.7%', positive: true,  pct: 19, color: '#F59E0B' },
-  { symbol: 'DAI',  name: 'Dai',         amount: '500.00',   usd: '₦782,500',    change: '-0.1%', positive: false, pct: 3,  color: '#EF4444' },
-  { symbol: 'WETH', name: 'Wrapped ETH', amount: '0.50',     usd: '₦2,752,615',  change: '+5.1%', positive: true,  pct: 12, color: '#8B5CF6' },
+  { symbol: 'ETH',  name: 'Ethereum',    amount: '2.45',     usd: '₦13,565,358', change: '+5.2%', positive: true,  pct: 57, color: '#0B50D4' },
+  { symbol: 'USDC', name: 'USD Coin',    amount: '1,429.55', usd: '₦2,237,246',  change: '0.0%',  positive: true,  pct: 9,  color: '#0891B2' },
+  { symbol: 'LINK', name: 'Chainlink',   amount: '142.00',   usd: '₦4,444,788',  change: '+8.7%', positive: true,  pct: 19, color: '#B45309' },
+  { symbol: 'DAI',  name: 'Dai',         amount: '500.00',   usd: '₦782,500',    change: '-0.1%', positive: false, pct: 3,  color: '#C5202B' },
+  { symbol: 'WETH', name: 'Wrapped ETH', amount: '0.50',     usd: '₦2,752,615',  change: '+5.1%', positive: true,  pct: 12, color: '#7C3AED' },
 ]
 
 const pieData = holdings.map(h => ({ name: h.symbol, value: h.pct, color: h.color }))
@@ -26,13 +26,24 @@ const recentTx = [
   { type: 'receive', desc: 'Received USDC',       amount: '+500 USDC', usd: '+₦782,500',   time: '2d ago' },
 ]
 
+const statCards = [
+  { label: 'Total Value',    value: '₦23,699,507', change: '+12.4%', positive: true },
+  { label: '24h Change',     value: '+₦1,317,630', change: '+5.9%',  positive: true },
+  { label: 'Total Invested', value: '₦19,406,000', change: '',       positive: true },
+  { label: 'Total Profit',   value: '+₦4,293,507', change: '+22.1%', positive: true },
+]
+
+const card: React.CSSProperties = {
+  background: '#fff', border: '1px solid #DDE6F2',
+  borderRadius: 20, boxShadow: '0 1px 4px rgba(10,25,41,0.07)',
+}
+
 const ChartTooltip = ({ active, payload, label }: any) => {
   if (active && payload?.length) {
     return (
-      <div className="px-3 py-2.5 rounded-[10px] shadow-xl"
-        style={{ background: '#162033', border: '1px solid #1E293B' }}>
-        <p className="text-[10px] font-semibold tracking-wide uppercase mb-1" style={{ color: '#64748B' }}>{label}</p>
-        <p className="text-[15px] font-bold font-mono" style={{ color: '#3B82F6' }}>
+      <div style={{ background: '#fff', border: '1px solid #DDE6F2', borderRadius: 12, padding: '10px 14px', boxShadow: '0 8px 24px rgba(10,25,41,0.12)' }}>
+        <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#7A97B4', marginBottom: 4 }}>{label}</p>
+        <p style={{ fontSize: 15, fontWeight: 900, fontFamily: 'monospace', color: '#0B50D4' }}>
           ₦{(payload[0].value * 1565).toLocaleString()}
         </p>
       </div>
@@ -41,39 +52,30 @@ const ChartTooltip = ({ active, payload, label }: any) => {
   return null
 }
 
-const statCards = [
-  { label: 'Total Value',    value: '₦23,699,507', change: '+12.4%', positive: true },
-  { label: '24h Change',     value: '+₦1,317,630', change: '+5.9%',  positive: true },
-  { label: 'Total Invested', value: '₦19,406,000', change: '',       positive: true },
-  { label: 'Total Profit',   value: '+₦4,293,507', change: '+22.1%', positive: true },
-]
-
 export const PortfolioPage: React.FC = () => (
-  <div className="h-full flex flex-col">
+  <div className="h-full flex flex-col" style={{ background: '#EEF3FB' }}>
     {/* Header */}
-    <div className="px-6 pt-6 pb-4 flex-shrink-0" style={{ borderBottom: '1px solid #1E293B' }}>
-      <h1 className="text-[20px] font-bold" style={{ color: '#F8FAFC' }}>Portfolio</h1>
-      <p className="text-[13px] mt-0.5" style={{ color: '#64748B' }}>Your complete asset overview</p>
+    <div className="flex-shrink-0 bg-white" style={{ padding: '24px 28px', borderBottom: '1px solid #DDE6F2' }}>
+      <h1 style={{ fontSize: 22, fontWeight: 900, color: '#0A1929', letterSpacing: '-0.02em' }}>Portfolio</h1>
+      <p style={{ fontSize: 14, fontWeight: 500, color: '#7A97B4', marginTop: 4 }}>Your complete asset overview</p>
     </div>
 
-    <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-5">
+    <div className="flex-1 overflow-y-auto flex flex-col gap-6" style={{ padding: '24px 28px' }}>
 
       {/* Summary stats */}
       <div className="grid grid-cols-4 gap-4">
-        {statCards.map(card => (
-          <div key={card.label} className="rounded-[18px] p-4"
-            style={{ background: '#0F172A', border: '1px solid #1E293B' }}>
-            <div className="text-[10px] font-semibold tracking-[0.1em] uppercase mb-1.5" style={{ color: '#64748B' }}>
-              {card.label}
+        {statCards.map(card2 => (
+          <div key={card2.label} style={{ ...card, padding: '20px 22px' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#7A97B4', marginBottom: 8 }}>
+              {card2.label}
             </div>
-            <div className="text-[22px] font-bold font-mono leading-tight" style={{ color: '#F8FAFC' }}>
-              {card.value}
+            <div style={{ fontSize: 22, fontWeight: 900, fontFamily: "'JetBrains Mono', monospace", color: '#0A1929', lineHeight: 1, marginBottom: 6 }}>
+              {card2.value}
             </div>
-            {card.change && (
-              <div className="text-[12px] font-semibold mt-1 flex items-center gap-1"
-                style={{ color: card.positive ? '#22C55E' : '#EF4444' }}>
-                {card.positive ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
-                {card.change}
+            {card2.change && (
+              <div className="flex items-center gap-1" style={{ fontSize: 12, fontWeight: 700, color: card2.positive ? '#057A4B' : '#C5202B' }}>
+                {card2.positive ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
+                {card2.change}
               </div>
             )}
           </div>
@@ -81,70 +83,71 @@ export const PortfolioPage: React.FC = () => (
       </div>
 
       {/* Chart + Pie */}
-      <div className="grid grid-cols-3 gap-5">
+      <div className="grid gap-5" style={{ gridTemplateColumns: '2fr 1fr' }}>
 
         {/* Performance chart */}
-        <div className="col-span-2 rounded-[20px] p-5" style={{ background: '#0F172A', border: '1px solid #1E293B' }}>
-          <div className="flex items-center justify-between mb-4">
+        <div style={card}>
+          <div className="flex items-center justify-between" style={{ padding: '20px 22px', borderBottom: '1px solid #EEF3FB' }}>
             <div>
-              <div className="text-[10px] font-semibold tracking-[0.12em] uppercase mb-1.5" style={{ color: '#64748B' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#7A97B4', marginBottom: 6 }}>
                 Performance
               </div>
-              <div className="text-[24px] font-bold font-mono" style={{ color: '#F8FAFC' }}>₦23,699,507</div>
+              <div style={{ fontSize: 26, fontWeight: 900, fontFamily: "'JetBrains Mono', monospace", color: '#0A1929' }}>
+                ₦23,699,507
+              </div>
             </div>
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-semibold"
-              style={{ background: 'rgba(34,197,94,0.08)', color: '#22C55E', border: '1px solid rgba(34,197,94,0.15)' }}>
-              <TrendingUp size={11} /> +12.4% this week
+            <div className="flex items-center gap-1.5" style={{ padding: '6px 12px', background: '#E4F7EE', borderRadius: 99, fontSize: 12, fontWeight: 800, color: '#057A4B' }}>
+              <TrendingUp size={12} /> +12.4% this week
             </div>
           </div>
-          <div className="h-[160px]">
+          <div style={{ padding: '16px 12px 12px', height: 180 }}>
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
                 <defs>
-                  <linearGradient id="portfolioGrad2" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%"   stopColor="#3B82F6" stopOpacity={0.25} />
-                    <stop offset="100%" stopColor="#3B82F6" stopOpacity={0} />
+                  <linearGradient id="portGradLight" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%"   stopColor="#0B50D4" stopOpacity={0.18} />
+                    <stop offset="100%" stopColor="#0891B2" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
-                <XAxis dataKey="day" tick={{ fill: '#334155', fontSize: 10 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: '#334155', fontSize: 10 }} axisLine={false} tickLine={false}
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(221,230,242,0.8)" vertical={false} />
+                <XAxis dataKey="day" tick={{ fill: '#A8BDD4', fontSize: 10, fontWeight: 700 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: '#A8BDD4', fontSize: 10 }} axisLine={false} tickLine={false}
                   tickFormatter={v => `₦${(v * 1565 / 1_000_000).toFixed(1)}M`} />
-                <Tooltip content={<ChartTooltip />} cursor={{ stroke: 'rgba(59,130,246,0.2)', strokeWidth: 1 }} />
-                <Area type="monotone" dataKey="value" stroke="#3B82F6" strokeWidth={2.5}
-                  fill="url(#portfolioGrad2)" dot={false}
-                  activeDot={{ r: 4, fill: '#3B82F6', stroke: '#07111F', strokeWidth: 2.5 }} />
+                <Tooltip content={<ChartTooltip />} cursor={{ stroke: 'rgba(11,80,212,0.2)', strokeWidth: 1 }} />
+                <Area type="monotone" dataKey="value" stroke="#0B50D4" strokeWidth={2.5}
+                  fill="url(#portGradLight)" dot={false}
+                  activeDot={{ r: 5, fill: '#0B50D4', stroke: '#fff', strokeWidth: 2.5 }} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
         </div>
 
         {/* Allocation pie */}
-        <div className="rounded-[20px] p-5" style={{ background: '#0F172A', border: '1px solid #1E293B' }}>
-          <div className="text-[10px] font-semibold tracking-[0.12em] uppercase mb-3" style={{ color: '#64748B' }}>
-            Allocation
+        <div style={card}>
+          <div style={{ padding: '20px 22px', borderBottom: '1px solid #EEF3FB' }}>
+            <div style={{ fontSize: 15, fontWeight: 800, color: '#0A1929' }}>Allocation</div>
           </div>
-          <div className="h-[160px]">
+          <div style={{ height: 160, padding: '8px 0' }}>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={pieData} cx="50%" cy="50%" innerRadius={45} outerRadius={72} dataKey="value" strokeWidth={0}>
+                <Pie data={pieData} cx="50%" cy="50%" innerRadius={45} outerRadius={70} dataKey="value" strokeWidth={2} stroke="#fff">
                   {pieData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
                 </Pie>
                 <Tooltip
                   formatter={(value) => [`${value}%`, '']}
-                  contentStyle={{ background: '#162033', border: '1px solid #1E293B', borderRadius: 10 }}
-                  labelStyle={{ color: '#64748B' }}
-                  itemStyle={{ color: '#F8FAFC' }}
+                  contentStyle={{ background: '#fff', border: '1px solid #DDE6F2', borderRadius: 12 }}
+                  labelStyle={{ color: '#7A97B4' }}
+                  itemStyle={{ color: '#0A1929', fontWeight: 700 }}
                 />
               </PieChart>
             </ResponsiveContainer>
           </div>
-          <div className="flex flex-col gap-1.5 mt-2">
+          <div style={{ padding: '0 22px 20px', display: 'flex', flexDirection: 'column', gap: 8 }}>
             {holdings.map(h => (
-              <div key={h.symbol} className="flex items-center gap-2 text-[12px]">
-                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: h.color }} />
-                <span className="flex-1" style={{ color: '#64748B' }}>{h.symbol}</span>
-                <span className="font-semibold" style={{ color: '#F8FAFC' }}>{h.pct}%</span>
+              <div key={h.symbol} className="flex items-center gap-2" style={{ fontSize: 13 }}>
+                <div style={{ width: 10, height: 10, borderRadius: '50%', background: h.color, flexShrink: 0 }} />
+                <span style={{ flex: 1, fontWeight: 600, color: '#3D5A78' }}>{h.symbol}</span>
+                <span style={{ fontWeight: 800, color: '#0A1929' }}>{h.pct}%</span>
               </div>
             ))}
           </div>
@@ -152,88 +155,83 @@ export const PortfolioPage: React.FC = () => (
       </div>
 
       {/* Holdings + Recent tx */}
-      <div className="grid grid-cols-3 gap-5">
+      <div className="grid gap-5" style={{ gridTemplateColumns: '2fr 1fr' }}>
 
         {/* Holdings table */}
-        <div className="col-span-2 rounded-[20px] overflow-hidden" style={{ background: '#0F172A', border: '1px solid #1E293B' }}>
-          <div className="px-5 py-4" style={{ borderBottom: '1px solid #1E293B' }}>
-            <h3 className="text-[14px] font-semibold" style={{ color: '#F8FAFC' }}>Holdings</h3>
+        <div style={{ ...card, overflow: 'hidden' }}>
+          <div style={{ padding: '18px 22px', borderBottom: '1px solid #DDE6F2' }}>
+            <div style={{ fontSize: 16, fontWeight: 800, color: '#0A1929' }}>Holdings</div>
           </div>
-          <div className="grid px-5 py-3 text-[10px] font-semibold tracking-[0.1em] uppercase"
-            style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr 1.5fr', borderBottom: '1px solid #1E293B', color: '#334155' }}>
-            <span>Asset</span><span>Amount</span><span>Value</span><span>24h</span><span>Allocation</span>
+          {/* Column headers */}
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1.5fr', padding: '10px 22px', borderBottom: '1px solid #EEF3FB' }}>
+            {['Asset', 'Amount', 'Value', '24h', 'Allocation'].map(h => (
+              <div key={h} style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#A8BDD4' }}>{h}</div>
+            ))}
           </div>
           {holdings.map(h => (
             <div key={h.symbol}
-              className="grid px-5 py-3.5 items-center transition-colors"
-              style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr 1.5fr', borderBottom: '1px solid #162033' }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.015)' }}
+              style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1.5fr', padding: '14px 22px', alignItems: 'center', borderBottom: '1px solid #EEF3FB', transition: 'background 0.15s', cursor: 'default' }}
+              onMouseEnter={e => { e.currentTarget.style.background = '#F4F8FD' }}
               onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
             >
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white flex-shrink-0"
-                  style={{ background: h.color }}>
+                <div style={{ width: 36, height: 36, borderRadius: '50%', background: h.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 900, color: '#fff', flexShrink: 0 }}>
                   {h.symbol[0]}
                 </div>
                 <div>
-                  <div className="text-[13px] font-semibold" style={{ color: '#F8FAFC' }}>{h.symbol}</div>
-                  <div className="text-[11px]" style={{ color: '#64748B' }}>{h.name}</div>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: '#0A1929' }}>{h.symbol}</div>
+                  <div style={{ fontSize: 12, fontWeight: 500, color: '#7A97B4' }}>{h.name}</div>
                 </div>
               </div>
-              <span className="text-[13px] font-mono" style={{ color: '#F8FAFC' }}>{h.amount}</span>
-              <span className="text-[13px] font-mono" style={{ color: '#F8FAFC' }}>{h.usd}</span>
-              <span className="text-[12px] font-semibold flex items-center gap-0.5"
-                style={{ color: h.positive ? '#22C55E' : '#EF4444' }}>
+              <span style={{ fontSize: 13, fontWeight: 700, fontFamily: 'monospace', color: '#0A1929' }}>{h.amount}</span>
+              <span style={{ fontSize: 13, fontWeight: 700, fontFamily: 'monospace', color: '#0A1929' }}>{h.usd}</span>
+              <div className="flex items-center gap-1" style={{ fontSize: 13, fontWeight: 800, color: h.positive ? '#057A4B' : '#C5202B' }}>
                 {h.positive ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
                 {h.change}
-              </span>
+              </div>
               <div className="flex items-center gap-2">
-                <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: '#162033' }}>
-                  <div className="h-full rounded-full" style={{ width: `${h.pct}%`, background: h.color }} />
+                <div style={{ flex: 1, height: 6, borderRadius: 99, background: '#EEF3FB', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', borderRadius: 99, background: h.color, width: `${h.pct}%`, transition: 'width 0.7s' }} />
                 </div>
-                <span className="text-[11px] w-7 text-right flex-shrink-0" style={{ color: '#64748B' }}>{h.pct}%</span>
+                <span style={{ fontSize: 12, width: 28, textAlign: 'right', flexShrink: 0, fontWeight: 700, color: '#7A97B4' }}>{h.pct}%</span>
               </div>
             </div>
           ))}
         </div>
 
         {/* Recent transactions */}
-        <div className="rounded-[20px] overflow-hidden" style={{ background: '#0F172A', border: '1px solid #1E293B' }}>
-          <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid #1E293B' }}>
-            <h3 className="text-[14px] font-semibold" style={{ color: '#F8FAFC' }}>Recent Transactions</h3>
-            <button className="text-[12px] font-medium transition-colors" style={{ color: '#3B82F6' }}
-              onMouseEnter={e => { e.currentTarget.style.color = '#60A5FA' }}
-              onMouseLeave={e => { e.currentTarget.style.color = '#3B82F6' }}>
+        <div style={{ ...card, overflow: 'hidden' }}>
+          <div className="flex items-center justify-between" style={{ padding: '18px 22px', borderBottom: '1px solid #DDE6F2' }}>
+            <div style={{ fontSize: 16, fontWeight: 800, color: '#0A1929' }}>Recent Transactions</div>
+            <button style={{ fontSize: 13, fontWeight: 800, color: '#0B50D4', background: 'none', border: 'none', cursor: 'pointer' }}
+              onMouseEnter={e => { e.currentTarget.style.color = '#0840AA' }}
+              onMouseLeave={e => { e.currentTarget.style.color = '#0B50D4' }}>
               View all
             </button>
           </div>
-          <div className="flex flex-col">
+          <div>
             {recentTx.map((tx, i) => {
               const isReceive = tx.type === 'receive'
               return (
                 <div key={i}
-                  className="flex items-center gap-3 px-5 py-3.5 transition-colors"
-                  style={{ borderBottom: '1px solid #162033' }}
-                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.015)' }}
+                  className="flex items-center gap-3"
+                  style={{ padding: '14px 22px', borderBottom: '1px solid #EEF3FB', transition: 'background 0.15s', cursor: 'default' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = '#F4F8FD' }}
                   onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
                 >
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-                    style={{ background: isReceive ? 'rgba(34,197,94,0.1)' : 'rgba(59,130,246,0.1)' }}>
+                  <div style={{ width: 36, height: 36, borderRadius: '50%', background: isReceive ? '#E4F7EE' : '#E8EFFE', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     {isReceive
-                      ? <ArrowDownLeft size={14} style={{ color: '#22C55E' }} />
-                      : <ArrowUpRight  size={14} style={{ color: '#3B82F6' }} />
+                      ? <ArrowDownLeft size={15} style={{ color: '#057A4B' }} />
+                      : <ArrowUpRight  size={15} style={{ color: '#0B50D4' }} />
                     }
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-[13px] font-medium truncate" style={{ color: '#F8FAFC' }}>{tx.desc}</div>
-                    <div className="text-[11px]" style={{ color: '#334155' }}>{tx.time}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#0A1929', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{tx.desc}</div>
+                    <div style={{ fontSize: 12, fontWeight: 500, color: '#A8BDD4', marginTop: 2 }}>{tx.time}</div>
                   </div>
-                  <div className="text-right flex-shrink-0">
-                    <div className="text-[13px] font-semibold font-mono"
-                      style={{ color: isReceive ? '#22C55E' : '#94A3B8' }}>
-                      {tx.usd}
-                    </div>
-                    <div className="text-[11px] font-mono" style={{ color: '#334155' }}>{tx.amount}</div>
+                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 800, fontFamily: 'monospace', color: isReceive ? '#057A4B' : '#0A1929' }}>{tx.usd}</div>
+                    <div style={{ fontSize: 11, fontFamily: 'monospace', fontWeight: 600, color: '#A8BDD4', marginTop: 2 }}>{tx.amount}</div>
                   </div>
                 </div>
               )

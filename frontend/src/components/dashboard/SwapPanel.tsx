@@ -1,13 +1,14 @@
 import React, { useState } from 'react'
 import { motion } from 'framer-motion'
 import { ArrowUpDown, ChevronDown, Info, Zap } from 'lucide-react'
+import { Spinner } from '../ui/Spinner'
 
 export const SwapPanel: React.FC = () => {
   const [sellAmount, setSellAmount] = useState('0.45')
-  const [sellToken, setSellToken]   = useState('ETH')
-  const [buyToken,  setBuyToken]    = useState('USDC')
-  const [loading,   setLoading]     = useState(false)
-  const [success,   setSuccess]     = useState(false)
+  const [sellToken,  setSellToken]  = useState('ETH')
+  const [buyToken,   setBuyToken]   = useState('USDC')
+  const [loading,    setLoading]    = useState(false)
+  const [success,    setSuccess]    = useState(false)
 
   const rate      = 3516.44
   const buyAmount = (parseFloat(sellAmount || '0') * rate).toFixed(2)
@@ -18,84 +19,103 @@ export const SwapPanel: React.FC = () => {
   }
 
   return (
-    <div className="rounded-[20px] p-5" style={{ background: '#0F172A', border: '1px solid #1E293B' }}>
-      <div className="flex items-center justify-between mb-4">
-        <div className="text-[13px] font-semibold" style={{ color: '#F8FAFC' }}>Quick Swap</div>
-        <div className="flex items-center gap-1 text-[11px]" style={{ color: '#64748B' }}>
-          <Info size={11} />
-          0.5% slippage
+    <div
+      className="rounded-2xl p-5 flex flex-col gap-4 bg-white"
+      style={{ border: '1px solid #DDE6F2', boxShadow: '0 1px 4px rgba(10,25,41,0.07)' }}
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="text-[15px] font-black" style={{ color: '#0A1929' }}>Quick Swap</div>
+          <div className="text-[12px] font-semibold mt-0.5" style={{ color: '#7A97B4' }}>Instant token exchange</div>
+        </div>
+        <div
+          className="flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full"
+          style={{ color: '#7A97B4', background: '#EEF3FB', border: '1px solid #DDE6F2' }}
+        >
+          <Info size={10} />
+          0.5% fee
         </div>
       </div>
 
       {/* Sell box */}
-      <div className="rounded-[12px] p-3.5 mb-1" style={{ background: '#162033', border: '1px solid #1E293B' }}>
-        <div className="flex justify-between text-[11px] mb-2" style={{ color: '#64748B' }}>
-          <span>Sell</span>
-          <span>Balance: 2.45 ETH</span>
+      <div className="rounded-xl p-4" style={{ background: '#F4F8FD', border: '1px solid #DDE6F2' }}>
+        <div className="flex justify-between text-[12px] font-semibold mb-2.5">
+          <span style={{ color: '#7A97B4' }}>You pay</span>
+          <span style={{ color: '#7A97B4' }}>Balance: 2.45 ETH</span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <input
             type="number"
             value={sellAmount}
             onChange={e => setSellAmount(e.target.value)}
-            className="flex-1 bg-transparent text-[20px] font-bold font-mono outline-none min-w-0"
-            style={{ color: '#F8FAFC' }}
+            className="flex-1 bg-transparent text-[22px] font-black font-mono outline-none min-w-0"
+            style={{ color: '#0A1929' }}
             placeholder="0.00"
           />
           <button
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-[8px] text-[12px] font-semibold transition-all"
-            style={{ background: '#0F172A', border: '1px solid #1E293B', color: '#F8FAFC' }}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-full text-[13px] font-bold transition-all flex-shrink-0 bg-white"
+            style={{ border: '1.5px solid #DDE6F2', color: '#0A1929' }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = '#0B50D4' }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = '#DDE6F2' }}
           >
-            <div className="w-4 h-4 rounded-full bg-[#3B82F6] flex items-center justify-center text-[8px] font-bold text-white">E</div>
+            <div className="w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-black text-white" style={{ background: '#0B50D4' }}>E</div>
             {sellToken}
-            <ChevronDown size={11} style={{ color: '#64748B' }} />
+            <ChevronDown size={11} style={{ color: '#7A97B4' }} />
           </button>
         </div>
       </div>
 
-      {/* Flip */}
-      <div className="flex justify-center my-1 relative z-10">
+      {/* Flip button */}
+      <div className="flex justify-center -my-1 relative z-10">
         <motion.button
           whileHover={{ scale: 1.1, rotate: 180 }}
           whileTap={{ scale: 0.9 }}
           onClick={() => { setSellToken(buyToken); setBuyToken(sellToken) }}
-          className="w-8 h-8 rounded-full flex items-center justify-center shadow-lg"
-          style={{ background: 'linear-gradient(135deg, #3B82F6, #06B6D4)' }}
+          className="w-9 h-9 rounded-full flex items-center justify-center shadow-md bg-white"
+          style={{ border: '1.5px solid #DDE6F2' }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = '#0B50D4'; e.currentTarget.style.background = '#E8EFFE' }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = '#DDE6F2'; e.currentTarget.style.background = '#fff' }}
         >
-          <ArrowUpDown size={13} className="text-white" />
+          <ArrowUpDown size={14} style={{ color: '#0B50D4' }} />
         </motion.button>
       </div>
 
       {/* Buy box */}
-      <div className="rounded-[12px] p-3.5 mb-4" style={{ background: '#162033', border: '1px solid #1E293B' }}>
-        <div className="flex justify-between text-[11px] mb-2" style={{ color: '#64748B' }}>
-          <span>Buy</span>
-          <span>Balance: 0.00 USDC</span>
+      <div className="rounded-xl p-4" style={{ background: '#F4F8FD', border: '1px solid #DDE6F2' }}>
+        <div className="flex justify-between text-[12px] font-semibold mb-2.5">
+          <span style={{ color: '#7A97B4' }}>You receive</span>
+          <span style={{ color: '#7A97B4' }}>Balance: 0.00 USDC</span>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="flex-1 text-[20px] font-bold font-mono" style={{ color: '#22C55E' }}>{buyAmount}</div>
+        <div className="flex items-center gap-3">
+          <div className="flex-1 text-[22px] font-black font-mono" style={{ color: '#057A4B' }}>{buyAmount}</div>
           <button
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-[8px] text-[12px] font-semibold transition-all"
-            style={{ background: '#0F172A', border: '1px solid #1E293B', color: '#F8FAFC' }}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-full text-[13px] font-bold transition-all flex-shrink-0 bg-white"
+            style={{ border: '1.5px solid #DDE6F2', color: '#0A1929' }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = '#0891B2' }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = '#DDE6F2' }}
           >
-            <div className="w-4 h-4 rounded-full bg-[#06B6D4] flex items-center justify-center text-[8px] font-bold text-white">U</div>
+            <div className="w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-black text-white" style={{ background: '#0891B2' }}>U</div>
             {buyToken}
-            <ChevronDown size={11} style={{ color: '#64748B' }} />
+            <ChevronDown size={11} style={{ color: '#7A97B4' }} />
           </button>
         </div>
       </div>
 
       {/* Rate row */}
-      <div className="flex justify-between text-[11px] mb-4" style={{ color: '#64748B' }}>
-        <span>1 ETH = {rate.toLocaleString()} USDC</span>
-        <span style={{ color: '#334155' }}>~$4.12 fee</span>
+      <div
+        className="flex justify-between text-[12px] font-semibold px-3 py-2 rounded-xl"
+        style={{ background: '#EEF3FB', border: '1px solid #DDE6F2' }}
+      >
+        <span style={{ color: '#3D5A78' }}>1 ETH = {rate.toLocaleString()} USDC</span>
+        <span style={{ color: '#7A97B4' }}>~$4.12 fee</span>
       </div>
 
       {/* CTA */}
       {success ? (
         <div
-          className="w-full py-3 rounded-[12px] text-[13px] font-semibold text-center"
-          style={{ background: 'rgba(34,197,94,0.1)', color: '#22C55E', border: '1px solid rgba(34,197,94,0.2)' }}
+          className="w-full py-3.5 rounded-full text-[13px] font-bold text-center"
+          style={{ background: '#E4F7EE', color: '#057A4B', border: '1px solid rgba(5,122,75,0.2)' }}
         >
           ✓ Swap Successful
         </div>
@@ -105,20 +125,16 @@ export const SwapPanel: React.FC = () => {
           whileTap={{ scale: 0.98 }}
           onClick={handleSwap}
           disabled={loading}
-          className="w-full py-3 rounded-[12px] text-[13px] font-semibold flex items-center justify-center gap-2 transition-all disabled:opacity-50"
-          style={{ background: 'linear-gradient(135deg, #22C55E, #06B6D4)', color: '#07111F' }}
+          className="w-full py-3.5 rounded-full text-[14px] font-bold flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+          style={{
+            background: '#0B50D4',
+            color: '#fff',
+            boxShadow: loading ? 'none' : '0 4px 16px rgba(11,80,212,0.28)',
+          }}
+          onMouseEnter={e => { if (!loading) e.currentTarget.style.background = '#0840AA' }}
+          onMouseLeave={e => { e.currentTarget.style.background = '#0B50D4' }}
         >
-          {loading ? (
-            <>
-              <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-              </svg>
-              Swapping…
-            </>
-          ) : (
-            <><Zap size={14} /> Swap Assets</>
-          )}
+          {loading ? <><Spinner size={16} />Swapping…</> : <><Zap size={14} />Swap Assets</>}
         </motion.button>
       )}
     </div>
