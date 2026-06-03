@@ -23,9 +23,10 @@ const BANKS = [
   { code: '057',    name: 'Zenith Bank' },
   { code: '011',    name: 'First Bank' },
   { code: '033',    name: 'UBA' },
-  { code: '526',    name: 'Kuda Bank' },
-  { code: '999992', name: 'OPay' },
-  { code: '999991', name: 'Moniepoint' },
+  { code: '50211',  name: 'Kuda Bank' },
+  { code: '100004', name: 'OPay' },
+  { code: '50515',  name: 'Moniepoint' },
+  { code: '100033', name: 'PalmPay' },
   { code: '050',    name: 'EcoBank' },
   { code: '214',    name: 'FCMB' },
   { code: '070',    name: 'Fidelity Bank' },
@@ -35,7 +36,8 @@ const BANKS = [
   { code: '032',    name: 'Union Bank' },
   { code: '215',    name: 'Unity Bank' },
   { code: '035',    name: 'Wema Bank' },
-  { code: '999993', name: 'PalmPay' },
+  { code: '030',    name: 'Heritage Bank' },
+  { code: '301',    name: 'Jaiz Bank' },
 ]
 
 const PIPELINE: { status: EscrowStatus; label: string; detail: string; ms: number }[] = [
