@@ -85,8 +85,8 @@ export const ConvertModal: React.FC<ConvertModalProps> = ({ isOpen, onClose }) =
     try {
       const res = await payoutApi.verifyAccount({ accountNumber: no, bankCode: bank.code })
       setAccountName(res.accountName)
-    } catch {
-      setVerifyError('Could not verify — check number & bank')
+    } catch (err: any) {
+      setVerifyError(err?.message || 'Could not verify — check number & bank')
     } finally {
       setVerifying(false)
     }

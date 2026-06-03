@@ -46,20 +46,19 @@ payoutRouter.get('/banks', requireAuth, async (_req: any, res: any, next: any) =
 // Verify a bank account number before payout
 payoutRouter.post(
   '/verify-account',
-  requireAuth,
+  // No auth required — public account name lookup
   [
     body('accountNumber').isLength({ min: 10, max: 10 }).withMessage('Account number must be 10 digits'),
-    body('bankCode').notEmpty(),
+    body('bankCode').notEmpty().withMessage('Bank code is required'),
   ],
   validate,
-  async (req: AuthRequest, res: any, next: any) => {
+  async (req: any, res: any, next: any) => {
     try {
       const { accountNumber, bankCode } = req.body
 
-      // Call Flutterwave account verification
       const axios = (await import('axios')).default
       const response = await axios.get(
-        `https://api.flutterwave.com/v3/accounts/resolve`,
+        'https://api.flutterwave.com/v3/accounts/resolve',
         {
           params:  { account_number: accountNumber, account_bank: bankCode },
           headers: { Authorization: `Bearer ${process.env.FLUTTERWAVE_SECRET_KEY}` },
@@ -67,16 +66,22 @@ payoutRouter.post(
       )
 
       if (response.data.status !== 'success') {
-        throw new AppError(400, 'Could not verify account', 'ACCOUNT_VERIFICATION_FAILED')
+        throw new AppError(400, 'Account not found', 'ACCOUNT_NOT_FOUND')
       }
 
       res.json({
         accountNumber,
         bankCode,
         accountName: response.data.data.account_name,
-        verified:    true,
+        verified: true,
       })
-    } catch (err) { next(err) }
+    } catch (err: any) {
+      // Forward Flutterwave's error message for clarity
+      if (err.response?.data?.message) {
+        return next(new AppError(400, err.response.data.message, 'FLUTTERWAVE_ERROR'))
+      }
+      next(err)
+    }
   },
 )
 
