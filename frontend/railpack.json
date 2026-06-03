@@ -1,0 +1,9 @@
+{
+  "build": {
+    "cmds": [
+      "npm install",
+      "npm run build"
+    ]
+  },
+  "staticOutputDir": "dist"
+}

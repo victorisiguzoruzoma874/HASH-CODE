@@ -1,20 +1,8 @@
+import { Transaction }                                          from '@mysten/sui/transactions'
 import { suiClient, backendKeypair, SUI_CONFIG, SUI_FUNCTIONS } from '../../config/sui'
-import { logger } from '../../utils/logger'
+import { logger }                                                from '../../utils/logger'
 
-/**
- * SuiTransactionService
- * ─────────────────────
- * Builds, signs, and submits Sui transactions for:
- *   - mark_paid      (after successful fiat payout)
- *   - admin_refund   (after all retries exhausted)
- *   - update_rates   (price keeper job)
- */
 export class SuiTransactionService {
-
-  private get sdk() {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    return require('@mysten/sui')
-  }
 
   // ── mark_paid ──────────────────────────────────────────────
 
@@ -34,7 +22,6 @@ export class SuiTransactionService {
 
     logger.info(`[SuiTxSvc] mark_paid — record=${recordId} provider=${provider}`)
 
-    const { Transaction } = this.sdk
     const tx = new Transaction()
 
     tx.moveCall({
@@ -65,7 +52,6 @@ export class SuiTransactionService {
 
     logger.info(`[SuiTxSvc] admin_refund — record=${recordId} reason=${reason}`)
 
-    const { Transaction } = this.sdk
     const tx = new Transaction()
 
     tx.moveCall({
@@ -95,7 +81,6 @@ export class SuiTransactionService {
       return 'dev-skip'
     }
 
-    const { Transaction } = this.sdk
     const tx = new Transaction()
     const toU64 = (n: number) => Math.round(n * 1_000_000)
 

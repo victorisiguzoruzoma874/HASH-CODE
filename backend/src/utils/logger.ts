@@ -7,6 +7,8 @@ const devFormat = printf(({ level, message, timestamp, ...meta }) => {
   return `${timestamp} [${level}] ${message}${metaStr}`
 })
 
+// Console-only logging — suitable for containerised deployments (Railway, Docker)
+// File transports require a writable logs/ directory which isn't guaranteed in containers
 export const logger = winston.createLogger({
   level: process.env.LOG_LEVEL ?? 'info',
   format: combine(timestamp({ format: 'YYYY-MM-DD HH:mm:ss' })),
@@ -16,12 +18,5 @@ export const logger = winston.createLogger({
         ? combine(timestamp(), json())
         : combine(timestamp(), colorize(), devFormat),
     }),
-    // In production, add file transport or ship to Datadog/CloudWatch
-    ...(process.env.NODE_ENV === 'production'
-      ? [
-          new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
-          new winston.transports.File({ filename: 'logs/combined.log' }),
-        ]
-      : []),
   ],
 })

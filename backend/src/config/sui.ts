@@ -1,10 +1,6 @@
-// Sui client configuration
-// Uses @mysten/sui package (v1+)
-
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const suiSdk = require('@mysten/sui')
-
-type SuiClientType = InstanceType<typeof suiSdk.SuiClient>
+// Sui client configuration — uses sub-path imports to avoid ESM/CJS incompatibility
+import { SuiClient, getFullnodeUrl } from '@mysten/sui/client'
+import { Ed25519Keypair }            from '@mysten/sui/keypairs/ed25519'
 
 // ── Network ──────────────────────────────────────────────────
 type SuiNetwork = 'mainnet' | 'testnet' | 'devnet' | 'localnet'
@@ -16,29 +12,19 @@ function resolveNetwork(): SuiNetwork {
 }
 
 function getNodeUrl(network: SuiNetwork): string {
-  const urls: Record<SuiNetwork, string> = {
-    mainnet:  'https://fullnode.mainnet.sui.io:443',
-    testnet:  'https://fullnode.testnet.sui.io:443',
-    devnet:   'https://fullnode.devnet.sui.io:443',
-    localnet: 'http://127.0.0.1:9000',
-  }
-  return process.env.SUI_RPC_URL ?? urls[network]
+  if (process.env.SUI_RPC_URL) return process.env.SUI_RPC_URL
+  return getFullnodeUrl(network)
 }
 
 // ── Sui client ───────────────────────────────────────────────
 const network = resolveNetwork()
-export const suiClient: SuiClientType = new suiSdk.SuiClient({ url: getNodeUrl(network) })
+export const suiClient = new SuiClient({ url: getNodeUrl(network) })
 
 // ── Backend keypair ──────────────────────────────────────────
-export function loadBackendKeypair() {
+export function loadBackendKeypair(): Ed25519Keypair | null {
   const key = process.env.SUI_BACKEND_PRIVATE_KEY
-  if (!key) {
-    // Return null in dev if key not set — services will skip on-chain calls
-    return null
-  }
+  if (!key) return null
   try {
-    const { Ed25519Keypair } = suiSdk
-    // Key can be bech32 (suiprivkey1...) or raw hex
     if (key.startsWith('suiprivkey')) {
       return Ed25519Keypair.fromSecretKey(key)
     }
