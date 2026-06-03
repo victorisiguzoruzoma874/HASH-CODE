@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   X, ChevronDown, ArrowRight, Shield, CheckCircle,
-  Loader2, ExternalLink, Building2, Zap, Info
+  Loader2, ExternalLink, Building2, Zap, Info, AlertCircle
 } from 'lucide-react'
 import { useStore } from '../../store/useStore'
+import { payoutApi } from '../../lib/api'
 import type { EscrowStatus } from '../../store/useStore'
 
 interface ConvertModalProps { isOpen: boolean; onClose: () => void }
@@ -16,7 +17,26 @@ const ASSETS = [
   { symbol: 'APT',  name: 'Aptos',       color: '#7C3AED', rate: 14_200 },
 ]
 
-const BANKS = ['GTBank', 'Access Bank', 'Zenith Bank', 'First Bank', 'UBA', 'Kuda Bank', 'OPay', 'Moniepoint']
+const BANKS = [
+  { code: '058',    name: 'GTBank' },
+  { code: '044',    name: 'Access Bank' },
+  { code: '057',    name: 'Zenith Bank' },
+  { code: '011',    name: 'First Bank' },
+  { code: '033',    name: 'UBA' },
+  { code: '526',    name: 'Kuda Bank' },
+  { code: '999992', name: 'OPay' },
+  { code: '999991', name: 'Moniepoint' },
+  { code: '050',    name: 'EcoBank' },
+  { code: '214',    name: 'FCMB' },
+  { code: '070',    name: 'Fidelity Bank' },
+  { code: '076',    name: 'Polaris Bank' },
+  { code: '221',    name: 'Stanbic IBTC' },
+  { code: '232',    name: 'Sterling Bank' },
+  { code: '032',    name: 'Union Bank' },
+  { code: '215',    name: 'Unity Bank' },
+  { code: '035',    name: 'Wema Bank' },
+  { code: '999993', name: 'PalmPay' },
+]
 
 const PIPELINE: { status: EscrowStatus; label: string; detail: string; ms: number }[] = [
   { status: 'depositing', label: 'Depositing to escrow',   detail: 'Executing PTB: swap_manager::swap_and_escrow() on Sui…',    ms: 1800 },
@@ -47,6 +67,8 @@ export const ConvertModal: React.FC<ConvertModalProps> = ({ isOpen, onClose }) =
   const [bank, setBank]               = useState(BANKS[0])
   const [accountNo, setAccountNo]     = useState('')
   const [accountName, setAccountName] = useState('')
+  const [verifying, setVerifying]     = useState(false)
+  const [verifyError, setVerifyError] = useState('')
   const [showBankDrop, setShowBankDrop]   = useState(false)
   const [showAssetDrop, setShowAssetDrop] = useState(false)
   const [pipelineStep, setPipelineStep]   = useState(0)
@@ -55,12 +77,20 @@ export const ConvertModal: React.FC<ConvertModalProps> = ({ isOpen, onClose }) =
   const fee        = amount ? Math.floor(parseFloat(amount) * asset.rate * 0.005).toLocaleString() : '0'
   const netAmount  = amount ? Math.floor(parseFloat(amount) * asset.rate * 0.995).toLocaleString() : '0'
 
-  useEffect(() => {
-    if (accountNo.length === 10) {
-      const t = setTimeout(() => setAccountName('JOHN DOE ADEYEMI'), 800)
-      return () => clearTimeout(t)
-    } else setAccountName('')
-  }, [accountNo])
+  const verifyAccount = useCallback(async (no: string) => {
+    if (no.length !== 10) { setAccountName(''); setVerifyError(''); return }
+    setVerifying(true); setVerifyError(''); setAccountName('')
+    try {
+      const res = await payoutApi.verifyAccount({ accountNumber: no, bankCode: bank.code })
+      setAccountName(res.accountName)
+    } catch {
+      setVerifyError('Could not verify — check number & bank')
+    } finally {
+      setVerifying(false)
+    }
+  }, [bank.code])
+
+  useEffect(() => { verifyAccount(accountNo) }, [accountNo, bank.code])
 
   useEffect(() => {
     if (step !== 'pipeline' || !activeOrder) return
@@ -81,7 +111,7 @@ export const ConvertModal: React.FC<ConvertModalProps> = ({ isOpen, onClose }) =
     submitEscrowOrder({
       txHash: `0x${Math.random().toString(16).slice(2, 10)}...${Math.random().toString(16).slice(2, 6)}`,
       asset: asset.symbol, amountCrypto: `${amount} ${asset.symbol}`,
-      amountFiat: `₦${netAmount}`, currency: 'NGN', bankName: bank,
+      amountFiat: `₦${netAmount}`, currency: 'NGN', bankName: bank.name,
       accountNumber: accountNo,
       aptosEvent: `hashpay::escrow::DepositReceived { sender: 0x123, amount: ${amount}, asset: ${asset.symbol} }`,
     })
@@ -90,7 +120,8 @@ export const ConvertModal: React.FC<ConvertModalProps> = ({ isOpen, onClose }) =
   }
 
   const handleClose = () => {
-    clearActiveOrder(); setStep('form'); setAmount(''); setAccountNo(''); setAccountName(''); setPipelineStep(0); onClose()
+    clearActiveOrder(); setStep('form'); setAmount(''); setAccountNo('')
+    setAccountName(''); setVerifyError(''); setVerifying(false); setPipelineStep(0); onClose()
   }
 
   const currentStatus = activeOrder?.status ?? 'idle'
@@ -220,7 +251,7 @@ export const ConvertModal: React.FC<ConvertModalProps> = ({ isOpen, onClose }) =
                       onMouseLeave={e => { e.currentTarget.style.borderColor = '#C4D4E8' }}>
                       <div className="flex items-center gap-2.5">
                         <Building2 size={15} style={{ color: '#7A97B4' }} />
-                        <span className="text-[13px] font-semibold" style={{ color: '#0A1929' }}>{bank}</span>
+                        <span className="text-[13px] font-semibold" style={{ color: '#0A1929' }}>{bank.name}</span>
                       </div>
                       <ChevronDown size={14} style={{ color: '#7A97B4' }} />
                     </button>
@@ -230,12 +261,12 @@ export const ConvertModal: React.FC<ConvertModalProps> = ({ isOpen, onClose }) =
                           className="absolute left-0 right-0 top-full mt-1 rounded-[12px] overflow-hidden z-20 overflow-y-auto"
                           style={{ background: '#fff', border: '1px solid #DDE6F2', boxShadow: '0 8px 24px rgba(10,25,41,0.12)', maxHeight: 200 }}>
                           {BANKS.map(b => (
-                            <button key={b} onClick={() => { setBank(b); setShowBankDrop(false) }}
+                            <button key={b.code} onClick={() => { setBank(b); setShowBankDrop(false) }}
                               className="w-full text-left px-4 py-2.5 text-[13px] transition-all"
                               style={{ color: '#7A97B4' }}
                               onMouseEnter={e => { e.currentTarget.style.background = '#F4F8FD'; e.currentTarget.style.color = '#0A1929' }}
                               onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#7A97B4' }}>
-                              {b}
+                              {b.name}
                             </button>
                           ))}
                         </motion.div>
@@ -247,14 +278,26 @@ export const ConvertModal: React.FC<ConvertModalProps> = ({ isOpen, onClose }) =
                       onChange={e => setAccountNo(e.target.value.replace(/\D/g, ''))}
                       placeholder="10-digit account number"
                       className="w-full rounded-[12px] px-4 py-3 text-[13px] font-mono transition-all"
-                      style={inputStyle}
-                      onFocus={e => { e.currentTarget.style.borderColor = '#0B50D4' }}
-                      onBlur={e => { e.currentTarget.style.borderColor = '#C4D4E8' }} />
-                    {accountName && (
+                      style={{ ...inputStyle, borderColor: verifyError ? '#C5202B' : accountName ? '#057A4B' : '#C4D4E8' }}
+                      onFocus={e => { if (!verifyError && !accountName) e.currentTarget.style.borderColor = '#0B50D4' }}
+                      onBlur={e => { if (!verifyError && !accountName) e.currentTarget.style.borderColor = '#C4D4E8' }} />
+                    {verifying && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        <Loader2 size={14} className="animate-spin" style={{ color: '#7A97B4' }} />
+                      </div>
+                    )}
+                    {!verifying && accountName && (
                       <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
                         className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
                         <CheckCircle size={13} style={{ color: '#057A4B' }} />
                         <span className="text-[11px] font-bold" style={{ color: '#057A4B' }}>{accountName}</span>
+                      </motion.div>
+                    )}
+                    {!verifying && verifyError && (
+                      <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+                        <AlertCircle size={13} style={{ color: '#C5202B' }} />
+                        <span className="text-[11px] font-bold" style={{ color: '#C5202B' }}>{verifyError}</span>
                       </motion.div>
                     )}
                   </div>
@@ -285,7 +328,7 @@ export const ConvertModal: React.FC<ConvertModalProps> = ({ isOpen, onClose }) =
 
                 {/* CTA */}
                 <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                  onClick={handleSubmit} disabled={!amount || !accountNo || accountNo.length < 10}
+                  onClick={handleSubmit} disabled={!amount || !accountNo || accountNo.length < 10 || !accountName || verifying}
                   className="w-full py-3.5 font-bold rounded-full text-[15px] transition-all disabled:opacity-40 flex items-center justify-center gap-2"
                   style={{ background: '#0B50D4', color: '#fff' }}
                   onMouseEnter={e => { e.currentTarget.style.background = '#0944bb' }}
