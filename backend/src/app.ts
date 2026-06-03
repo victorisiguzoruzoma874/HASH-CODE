@@ -19,6 +19,9 @@ import { logger }         from './utils/logger'
 const app: Application = express()
 const API = process.env.API_PREFIX ?? '/api/v1'
 
+// Trust Railway's reverse proxy so rate-limiter sees real client IPs
+app.set('trust proxy', 1)
+
 // ── Security middleware ──────────────────────────────────────
 app.use(helmet())
 app.use(cors({
