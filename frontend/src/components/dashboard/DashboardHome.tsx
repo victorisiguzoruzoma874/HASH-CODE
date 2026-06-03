@@ -30,7 +30,7 @@ const ChartTooltip = ({ active, payload, label }: any) => {
       <div style={{ background: '#fff', border: '1px solid #DDE6F2', borderRadius: 12, padding: '10px 14px', boxShadow: '0 8px 24px rgba(10,25,41,0.12)' }}>
         <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#7A97B4', marginBottom: 4 }}>{label}</p>
         <p style={{ fontSize: 16, fontWeight: 900, fontFamily: 'JetBrains Mono, monospace', color: '#0B50D4' }}>
-          ${payload[0].value.toLocaleString()}
+          ₦{payload[0].value.toLocaleString()}
         </p>
       </div>
     )
@@ -187,7 +187,7 @@ export const DashboardHome: React.FC = () => {
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(221,230,242,0.7)" vertical={false} />
                   <XAxis dataKey="day" tick={{ fill: '#A8BDD4', fontSize: 11, fontWeight: 700 }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fill: '#A8BDD4', fontSize: 10 }} axisLine={false} tickLine={false}
-                    tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} />
+                    tickFormatter={v => `₦${(v / 1000).toFixed(0)}k`} />
                   <Tooltip content={<ChartTooltip />} cursor={{ stroke: 'rgba(11,80,212,0.15)', strokeWidth: 1 }} />
                   <Area type="monotone" dataKey="value" stroke="url(#dashLine)" strokeWidth={2.5}
                     fill="url(#dashGrad)" dot={false}
@@ -199,8 +199,8 @@ export const DashboardHome: React.FC = () => {
             {/* Bottom summary row */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', borderTop: '1px solid #EEF3FB' }}>
               {[
-                { label: 'ETH Balance',    value: '2.45 ETH',  sub: '$8,615.28' },
-                { label: 'Yield (APR)',     value: '5.82%',     sub: '+$342/mo' },
+                { label: 'ETH Balance',    value: '2.45 ETH',  sub: '₦8,615.28' },
+                { label: 'Yield (APR)',     value: '5.82%',     sub: '+₦342/mo' },
                 { label: 'Wallet',          value: wallet.isConnected ? '● Connected' : '○ Disconnected', sub: wallet.balance },
               ].map((s, i) => (
                 <div key={s.label} style={{ padding: '16px 24px', borderRight: i < 2 ? '1px solid #EEF3FB' : 'none' }}>
@@ -218,26 +218,44 @@ export const DashboardHome: React.FC = () => {
             transition={{ duration: 0.4, delay: 0.08 }}
             style={card}
           >
-            <div style={{ padding: '20px 24px', borderBottom: '1px solid #EEF3FB' }}>
+            <div style={{ padding: '22px 28px 0' }}>
               <div style={{ fontSize: 16, fontWeight: 800, color: '#0A1929' }}>Quick Actions</div>
               <div style={{ fontSize: 13, fontWeight: 500, color: '#7A97B4', marginTop: 3 }}>Send, receive, and manage your assets</div>
             </div>
-            <div style={{ padding: '16px 20px', display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 8 }}>
+            <div style={{ padding: '20px 20px 24px', display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 10 }}>
               {actions.map(({ id, label, icon: Icon, bg, color }, i) => (
                 <motion.button
                   key={id}
-                  initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 + i * 0.03 }}
-                  whileHover={{ scale: 1.04, y: -2 }} whileTap={{ scale: 0.97 }}
+                  initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 + i * 0.04 }}
+                  whileHover={{ y: -3 }} whileTap={{ scale: 0.96 }}
                   onClick={() => handleAction(id)}
-                  style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '14px 8px', borderRadius: 14, background: '#fff', border: '1px solid #DDE6F2', cursor: 'pointer', transition: 'all 0.2s' }}
-                  onMouseEnter={e => { e.currentTarget.style.background = bg; e.currentTarget.style.borderColor = color + '55'; e.currentTarget.style.boxShadow = `0 4px 16px ${color}18` }}
-                  onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = '#DDE6F2'; e.currentTarget.style.boxShadow = 'none' }}
+                  style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10,
+                    padding: '18px 6px 16px', borderRadius: 16,
+                    background: '#FAFBFF', border: '1.5px solid #E8EEF8',
+                    cursor: 'pointer', transition: 'all 0.18s ease',
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.background = bg
+                    e.currentTarget.style.borderColor = color + '40'
+                    e.currentTarget.style.boxShadow = `0 6px 20px ${color}1A`
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.background = '#FAFBFF'
+                    e.currentTarget.style.borderColor = '#E8EEF8'
+                    e.currentTarget.style.boxShadow = 'none'
+                  }}
                 >
-                  <div style={{ width: 38, height: 38, borderRadius: '50%', background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Icon size={15} style={{ color }} />
+                  <div style={{
+                    width: 48, height: 48, borderRadius: '50%',
+                    background: bg,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    boxShadow: `0 2px 8px ${color}20`,
+                  }}>
+                    <Icon size={20} style={{ color }} />
                   </div>
-                  <span style={{ fontSize: 10, fontWeight: 800, color: '#7A97B4', whiteSpace: 'nowrap' }}>{label}</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#4A6580', whiteSpace: 'nowrap', letterSpacing: '-0.01em' }}>{label}</span>
                 </motion.button>
               ))}
             </div>
@@ -335,9 +353,9 @@ export const DashboardHome: React.FC = () => {
             </div>
             <div style={{ padding: '8px 8px' }}>
               {[
-                { symbol: 'ETH',  name: 'Ethereum', amount: '2.45',     usd: '$8,615',  pct: 57, color: '#0B50D4' },
-                { symbol: 'USDC', name: 'USD Coin', amount: '1,429.55', usd: '$1,429',  pct: 18, color: '#0891B2' },
-                { symbol: 'LINK', name: 'Chainlink',amount: '142.00',   usd: '$2,840',  pct: 10, color: '#7C3AED' },
+                { symbol: 'ETH',  name: 'Ethereum', amount: '2.45',     usd: '₦8,615',  pct: 57, color: '#0B50D4' },
+                { symbol: 'USDC', name: 'USD Coin', amount: '1,429.55', usd: '₦1,429',  pct: 18, color: '#0891B2' },
+                { symbol: 'LINK', name: 'Chainlink',amount: '142.00',   usd: '₦2,840',  pct: 10, color: '#7C3AED' },
               ].map(token => (
                 <div key={token.symbol} className="flex items-center gap-3"
                   style={{ padding: '10px 12px', borderRadius: 12, transition: 'background 0.15s', cursor: 'default' }}

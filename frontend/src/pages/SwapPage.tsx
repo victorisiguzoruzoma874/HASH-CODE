@@ -152,7 +152,7 @@ export const SwapPage: React.FC = () => {
                 {[
                   { label: 'Rate', value: rate > 0 ? `1 ${sellToken.symbol} = ${rate.toLocaleString()} ${buyToken.symbol}` : '—', hasRefresh: true },
                   { label: 'Slippage', value: swapQuote ? `${(swapQuote.slippageBps / 100).toFixed(1)}%` : '0.5%' },
-                  { label: 'Network Fee', value: swapQuote ? `~$${swapQuote.networkFeeUSD.toFixed(2)}` : '—' },
+                  { label: 'Network Fee', value: swapQuote ? `~₦${swapQuote.networkFeeUSD.toFixed(2)}` : '—' },
                   { label: 'Route', value: `${sellToken.symbol} → ${buyToken.symbol}` },
                 ].map(row => (
                   <div key={row.label} className="flex justify-between items-center" style={{ paddingBottom: 8, marginBottom: 8, borderBottom: '1px solid #EEF3FB' }}>

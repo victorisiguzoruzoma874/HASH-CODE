@@ -108,7 +108,7 @@ export const SwapPanel: React.FC = () => {
         style={{ background: '#EEF3FB', border: '1px solid #DDE6F2' }}
       >
         <span style={{ color: '#3D5A78' }}>1 ETH = {rate.toLocaleString()} USDC</span>
-        <span style={{ color: '#7A97B4' }}>~$4.12 fee</span>
+        <span style={{ color: '#7A97B4' }}>~₦4.12 fee</span>
       </div>
 
       {/* CTA */}

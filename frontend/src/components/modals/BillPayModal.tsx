@@ -161,10 +161,10 @@ const SERVICE_CONFIGS: Record<string, ServiceConfig> = {
       { id: 'gameid', label: 'Game ID / Username', placeholder: 'Enter game ID' },
     ],
     amounts: [
-      { label: '$5',  value: '5',  eth: '0.0014' },
-      { label: '$10', value: '10', eth: '0.0028' },
-      { label: '$25', value: '25', eth: '0.0071' },
-      { label: '$50', value: '50', eth: '0.0142' },
+      { label: '₦5',  value: '5',  eth: '0.0014' },
+      { label: '₦10', value: '10', eth: '0.0028' },
+      { label: '₦25', value: '25', eth: '0.0071' },
+      { label: '₦50', value: '50', eth: '0.0142' },
     ],
   },
   utilities: {
@@ -402,7 +402,7 @@ const ServiceForm: React.FC<{
           </div>
           <div className="flex justify-between">
             <span style={{ color: '#64748B' }}>Network Fee</span>
-            <span className="font-mono" style={{ color: '#F8FAFC' }}>~$0.42</span>
+            <span className="font-mono" style={{ color: '#F8FAFC' }}>~₦0.42</span>
           </div>
           <div className="flex justify-between pt-2 mt-1" style={{ borderTop: '1px solid #1E293B' }}>
             <span className="font-semibold" style={{ color: '#94A3B8' }}>Total</span>

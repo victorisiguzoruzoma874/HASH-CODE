@@ -38,7 +38,7 @@ export const StakeBanner: React.FC = () => (
         </div>
         <div className="h-8 w-px" style={{ background: 'rgba(255,255,255,0.15)' }} />
         <div className="text-center">
-          <div className="text-[18px] font-black font-mono text-white">$4.2M</div>
+          <div className="text-[18px] font-black font-mono text-white">₦4.2M</div>
           <div className="text-[10px] font-bold" style={{ color: 'rgba(255,255,255,0.55)' }}>TVL</div>
         </div>
         <div className="h-8 w-px" style={{ background: 'rgba(255,255,255,0.15)' }} />

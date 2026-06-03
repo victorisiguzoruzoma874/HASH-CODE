@@ -115,7 +115,7 @@ export const SendModal: React.FC<SendModalProps> = ({ isOpen, onClose }) => {
           <div className="flex justify-between">
             <span style={{ color: '#64748B' }}>Network Fee</span>
             <span className="font-mono" style={{ color: '#F8FAFC' }}>
-              0.00042 ETH <span style={{ color: '#64748B' }}>(~$0.88)</span>
+              0.00042 ETH <span style={{ color: '#64748B' }}>(~₦0.88)</span>
             </span>
           </div>
           <div className="flex justify-between">

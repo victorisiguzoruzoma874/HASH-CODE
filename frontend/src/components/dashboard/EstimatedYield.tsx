@@ -44,7 +44,7 @@ export const EstimatedYield: React.FC<EstimatedYieldProps> = ({ compact = false 
             </span>
             <span className="text-[14px] font-bold" style={{ color: '#7A97B4' }}>APR</span>
           </div>
-          <div className="text-[12px] font-semibold mt-1" style={{ color: '#7A97B4' }}>+$342.10 est. monthly</div>
+          <div className="text-[12px] font-semibold mt-1" style={{ color: '#7A97B4' }}>+₦342.10 est. monthly</div>
         </div>
         <div
           className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold"

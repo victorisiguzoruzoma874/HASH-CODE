@@ -122,13 +122,13 @@ export const useStore = create<AppStore>((set) => ({
   wallet: {
     address: '0x123...4567',
     balance: '2.45 ETH',
-    balanceUSD: '$8,615.28',
+    balanceUSD: '₦8,615.28',
     network: 'Ethereum Mainnet',
     isConnected: false,
     isConnecting: false,
   },
   portfolio: {
-    totalBalance: '$6,842.12',
+    totalBalance: '₦6,842.12',
     changePercent: '+12.4%',
     changePositive: true,
     timeframe: '1W',
@@ -144,7 +144,7 @@ export const useStore = create<AppStore>((set) => ({
         timestamp: '2 hours ago',
         status: 'completed',
         amountIn: '-0.5 ETH',
-        amountOut: '+$1,429.55',
+        amountOut: '+₦1,429.55',
       },
       {
         id: '2',
@@ -153,7 +153,7 @@ export const useStore = create<AppStore>((set) => ({
         timestamp: '5 hours ago',
         status: 'completed',
         amountIn: '+142.00 LINK',
-        amountOut: '+$2,840.12',
+        amountOut: '+₦2,840.12',
       },
       {
         id: '3',
@@ -170,9 +170,9 @@ export const useStore = create<AppStore>((set) => ({
     activeModal: null,
     sidebarOpen: true,
     notifications: [
-      { id: '1', message: 'Swap completed: 0.5 ETH → $1,429.55 USDC', read: false },
+      { id: '1', message: 'Swap completed: 0.5 ETH → ₦1,429.55 USDC', read: false },
       { id: '2', message: 'New liquidity pool available: WETH/DAI 8.2% APY', read: false },
-      { id: '3', message: 'Network fee dropped to $0.88', read: true },
+      { id: '3', message: 'Network fee dropped to ₦0.88', read: true },
     ],
   },
   escrow: {

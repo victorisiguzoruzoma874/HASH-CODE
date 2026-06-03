@@ -4,9 +4,9 @@ import { TrendingUp } from 'lucide-react'
 interface AssetBalanceProps { compact?: boolean }
 
 const tokens = [
-  { symbol: 'ETH',  name: 'Ethereum', amount: '2.45',     usd: '$8,615', pct: 57, color: '#0B50D4' },
-  { symbol: 'USDC', name: 'USD Coin', amount: '1,429.55', usd: '$1,429', pct: 18, color: '#0891B2' },
-  { symbol: 'LINK', name: 'Chainlink',amount: '142.00',   usd: '$2,840', pct: 10, color: '#7C3AED' },
+  { symbol: 'ETH',  name: 'Ethereum', amount: '2.45',     usd: '₦8,615', pct: 57, color: '#0B50D4' },
+  { symbol: 'USDC', name: 'USD Coin', amount: '1,429.55', usd: '₦1,429', pct: 18, color: '#0891B2' },
+  { symbol: 'LINK', name: 'Chainlink',amount: '142.00',   usd: '₦2,840', pct: 10, color: '#7C3AED' },
 ]
 
 export const AssetBalance: React.FC<AssetBalanceProps> = ({ compact = false }) => {
@@ -22,7 +22,7 @@ export const AssetBalance: React.FC<AssetBalanceProps> = ({ compact = false }) =
           <span className="text-[12px] font-bold" style={{ color: '#7A97B4' }}>Asset Balance</span>
         </div>
         <div className="text-[22px] font-black font-mono leading-none" style={{ color: '#0A1929' }}>2.45 ETH</div>
-        <div className="text-[12px] font-semibold font-mono mt-1" style={{ color: '#7A97B4' }}>$8,615.28</div>
+        <div className="text-[12px] font-semibold font-mono mt-1" style={{ color: '#7A97B4' }}>₦8,615.28</div>
       </div>
     )
   }
@@ -41,7 +41,7 @@ export const AssetBalance: React.FC<AssetBalanceProps> = ({ compact = false }) =
           <div className="text-[28px] font-black font-mono leading-none tracking-tight" style={{ color: '#0A1929' }}>
             2.45 ETH
           </div>
-          <div className="text-[13px] font-semibold font-mono mt-1" style={{ color: '#7A97B4' }}>$6,842.12 USD</div>
+          <div className="text-[13px] font-semibold font-mono mt-1" style={{ color: '#7A97B4' }}>₦6,842.12</div>
         </div>
         <div
           className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold"

@@ -105,7 +105,7 @@ export const PortfolioChart: React.FC = () => {
             <YAxis
               tick={{ fill: '#A8BDD4', fontSize: 10, fontWeight: 600 }}
               axisLine={false} tickLine={false}
-              tickFormatter={v => `$${(v / 1000).toFixed(0)}k`}
+              tickFormatter={v => `₦${(v / 1000).toFixed(0)}k`}
             />
             <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'rgba(11,80,212,0.2)', strokeWidth: 1 }} />
             <Area

@@ -96,7 +96,7 @@ export const ExchangeModal: React.FC<ExchangeModalProps> = ({ isOpen, onClose })
           </div>
           <div className="flex justify-between">
             <span style={{ color: '#64748B' }}>Network Fee</span>
-            <span className="font-mono" style={{ color: '#F8FAFC' }}>$4.12</span>
+            <span className="font-mono" style={{ color: '#F8FAFC' }}>₦4.12</span>
           </div>
         </div>
 
