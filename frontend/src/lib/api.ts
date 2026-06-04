@@ -276,7 +276,9 @@ export const priceApi = {
         ETH:  { price: 3516.44, timestamp: Date.now() },
         BTC:  { price: 65000,   timestamp: Date.now() },
         USDC: { price: 1,       timestamp: Date.now() },
+        USDT: { price: 1,       timestamp: Date.now() },
         APT:  { price: 9,       timestamp: Date.now() },
+        SUI:  { price: 3.24,    timestamp: Date.now() },
       },
       timestamp: new Date().toISOString(),
     })
@@ -328,6 +330,45 @@ export const healthApi = {
   check: () => {
     if (MOCK_MODE) return mockDelay({ status: 'healthy', checks: { database: 'mock', redis: 'mock' } })
     return get<{ status: string; checks: Record<string, string> }>('/health')
+  },
+}
+
+// ── Wallet ────────────────────────────────────────────────────
+
+export interface WalletBalance {
+  ngnBalance:           string
+  hashpayAccountNumber: string | null
+  virtualAccount:       { accountNumber: string; bankName: string | null } | null
+}
+
+export const walletApi = {
+  getBalance: () => {
+    if (MOCK_MODE) return mockDelay<{ data: WalletBalance }>({
+      data: { ngnBalance: '25000.00', hashpayAccountNumber: '4031285796', virtualAccount: null },
+    })
+    return get<{ data: WalletBalance }>('/wallet/balance')
+  },
+
+  send: (body: { recipientAccountNumber: string; amount: number }) => {
+    if (MOCK_MODE) return mockDelay({ message: 'Transfer successful', data: { reference: 'TRF-MOCK' } })
+    return post<{ message: string; data: { reference: string } }>('/wallet/send', body)
+  },
+
+  lookup: (accountNumber: string) => {
+    if (MOCK_MODE) return mockDelay({ data: { fullName: 'Demo User', accountNumber } })
+    return get<{ data: { fullName: string; accountNumber: string } }>(`/wallet/lookup/${accountNumber}`)
+  },
+
+  getTransactions: (page = 1, pageSize = 20) => {
+    if (MOCK_MODE) return mockDelay({ data: { transactions: [], total: 0, page, pageSize } })
+    return get<{ data: { transactions: unknown[]; total: number; page: number; pageSize: number } }>(
+      `/wallet/transactions?page=${page}&pageSize=${pageSize}`
+    )
+  },
+
+  getRate: (token = 'USDC', network = 'base', amount = '1') => {
+    if (MOCK_MODE) return mockDelay({ data: { buyRate: '1565', sellRate: '1560' } })
+    return get<{ data: Record<string, string> }>(`/wallet/rate?token=${token}&network=${network}&amount=${amount}`)
   },
 }
 

@@ -17,7 +17,7 @@ priceRouter.get('/all', async (_req, res, next) => {
 // ── GET /price/:asset ────────────────────────────────────────
 priceRouter.get(
   '/:asset',
-  [param('asset').isIn(['ETH', 'BTC', 'APT', 'USDC', 'USDT'])],
+  [param('asset').isIn(['ETH', 'BTC', 'APT', 'USDC', 'USDT', 'SUI'])],
   validate,
   async (req: any, res: any, next: any) => {
     try {

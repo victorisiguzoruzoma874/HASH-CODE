@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import {
   Send, Download, Repeat2, QrCode, Receipt, Phone, Wifi,
@@ -13,6 +13,8 @@ import { useStore } from '../../store/useStore'
 import { useApiStore } from '../../store/useApiStore'
 import { SwapPanel } from './SwapPanel'
 import { StakeBanner } from './StakeBanner'
+import { LivePriceTicker } from './LivePriceTicker'
+import { priceApi } from '../../lib/api'
 import type { ModalType } from '../../store/useStore'
 
 // ── Shared styles ────────────────────────────────────────────
@@ -67,6 +69,13 @@ const statusStyle = {
 const TIMEFRAMES = ['1W', '1M', '3M', 'ALL'] as const
 
 // ── DashboardHome ─────────────────────────────────────────────
+const LIVE_ASSETS = [
+  { symbol: 'SUI',  name: 'Sui',      amount: '0.00', color: '#4CA3FF' },
+  { symbol: 'ETH',  name: 'Ethereum', amount: '0.00', color: '#0B50D4' },
+  { symbol: 'USDC', name: 'USD Coin', amount: '0.00', color: '#0891B2' },
+  { symbol: 'BTC',  name: 'Bitcoin',  amount: '0.00', color: '#F7931A' },
+]
+
 export const DashboardHome: React.FC = () => {
   const openModal = useStore(s => s.openModal)
   const wallet    = useStore(s => s.wallet)
@@ -75,6 +84,25 @@ export const DashboardHome: React.FC = () => {
 
   const { totalBalance, changePercent, changePositive, timeframe, chartData } = useStore(s => s.portfolio)
   const setTimeframe = useStore(s => s.setTimeframe)
+
+  const [livePrices, setLivePrices] = useState<Record<string, number>>({})
+  const [ngnRate, setNgnRate]       = useState(1565)
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await priceApi.getAll()
+        const map: Record<string, number> = {}
+        Object.entries(res.prices).forEach(([k, v]) => { map[k] = v.price })
+        setLivePrices(map)
+        const fx = await priceApi.convert('USDC', 'NGN')
+        setNgnRate(fx.rate || 1565)
+      } catch { /* silently fail */ }
+    }
+    load()
+    const interval = setInterval(load, 30_000)
+    return () => clearInterval(interval)
+  }, [])
 
   const displayName = user?.fullName?.split(' ')[0] ?? user?.email ?? (wallet.isConnected ? wallet.address.slice(0, 8) + '…' : 'there')
 
@@ -89,6 +117,11 @@ export const DashboardHome: React.FC = () => {
 
   return (
     <div style={{ padding: '28px 28px 40px', maxWidth: 1280, margin: '0 auto' }}>
+
+      {/* ── Live Price Ticker ────────────────────────────────── */}
+      <div style={{ marginBottom: 20 }}>
+        <LivePriceTicker />
+      </div>
 
       {/* ── Greeting ────────────────────────────────────────── */}
       <motion.div
@@ -342,41 +375,57 @@ export const DashboardHome: React.FC = () => {
             <SwapPanel />
           </motion.div>
 
-          {/* Asset Summary card */}
+          {/* Live Asset Prices card */}
           <motion.div
             initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.4, delay: 0.12 }}
             style={card}
           >
-            <div style={{ padding: '18px 20px', borderBottom: '1px solid #EEF3FB' }}>
-              <div style={{ fontSize: 15, fontWeight: 800, color: '#0A1929' }}>Your Assets</div>
+            <div className="flex items-center justify-between" style={{ padding: '18px 20px', borderBottom: '1px solid #EEF3FB' }}>
+              <div style={{ fontSize: 15, fontWeight: 800, color: '#0A1929' }}>Live Prices</div>
+              <div className="flex items-center gap-1.5" style={{ fontSize: 11, fontWeight: 700, color: '#057A4B' }}>
+                <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#057A4B', animation: 'pulse 2s infinite' }} />
+                Live · 30s
+              </div>
             </div>
             <div style={{ padding: '8px 8px' }}>
-              {[
-                { symbol: 'ETH',  name: 'Ethereum', amount: '2.45',     usd: '₦8,615',  pct: 57, color: '#0B50D4' },
-                { symbol: 'USDC', name: 'USD Coin', amount: '1,429.55', usd: '₦1,429',  pct: 18, color: '#0891B2' },
-                { symbol: 'LINK', name: 'Chainlink',amount: '142.00',   usd: '₦2,840',  pct: 10, color: '#7C3AED' },
-              ].map(token => (
-                <div key={token.symbol} className="flex items-center gap-3"
-                  style={{ padding: '10px 12px', borderRadius: 12, transition: 'background 0.15s', cursor: 'default' }}
-                  onMouseEnter={e => { e.currentTarget.style.background = '#F4F8FD' }}
-                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
-                >
-                  <div style={{ width: 36, height: 36, borderRadius: '50%', background: token.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 900, color: '#fff', flexShrink: 0 }}>
-                    {token.symbol[0]}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 800, color: '#0A1929' }}>{token.symbol}</div>
-                    <div style={{ height: 4, borderRadius: 99, background: '#EEF3FB', marginTop: 5, overflow: 'hidden' }}>
-                      <div style={{ height: '100%', borderRadius: 99, background: token.color, width: `${token.pct}%` }} />
+              {LIVE_ASSETS.map(token => {
+                const usdPrice = livePrices[token.symbol] ?? 0
+                const ngnPrice = usdPrice * ngnRate
+                const allPrices = Object.values(livePrices).filter(Boolean)
+                const maxNgn = Math.max(...allPrices.map(p => p * ngnRate), 1)
+                const pct = maxNgn > 0 ? Math.round((ngnPrice / maxNgn) * 100) : 0
+                return (
+                  <div key={token.symbol} className="flex items-center gap-3"
+                    style={{ padding: '10px 12px', borderRadius: 12, transition: 'background 0.15s', cursor: 'default' }}
+                    onMouseEnter={e => { e.currentTarget.style.background = '#F4F8FD' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+                  >
+                    <div style={{ width: 36, height: 36, borderRadius: '50%', background: token.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 900, color: '#fff', flexShrink: 0 }}>
+                      {token.symbol[0]}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div className="flex items-center justify-between" style={{ marginBottom: 4 }}>
+                        <span style={{ fontSize: 13, fontWeight: 800, color: '#0A1929' }}>{token.symbol}</span>
+                        <span style={{ fontSize: 11, fontWeight: 600, color: '#A8BDD4', fontFamily: 'monospace' }}>
+                          {token.name}
+                        </span>
+                      </div>
+                      <div style={{ height: 4, borderRadius: 99, background: '#EEF3FB', overflow: 'hidden' }}>
+                        <div style={{ height: '100%', borderRadius: 99, background: token.color, width: `${pct}%`, transition: 'width 1s ease' }} />
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'right', flexShrink: 0, minWidth: 72 }}>
+                      <div style={{ fontSize: 13, fontWeight: 800, fontFamily: 'monospace', color: '#0A1929' }}>
+                        {usdPrice > 0 ? `$${usdPrice >= 1000 ? usdPrice.toLocaleString('en-US', { maximumFractionDigits: 2 }) : usdPrice.toFixed(4)}` : '—'}
+                      </div>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: '#A8BDD4', marginTop: 2, fontFamily: 'monospace' }}>
+                        {ngnPrice > 0 ? `₦${ngnPrice.toLocaleString('en-NG', { maximumFractionDigits: 0 })}` : '—'}
+                      </div>
                     </div>
                   </div>
-                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 800, fontFamily: 'monospace', color: '#0A1929' }}>{token.usd}</div>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: '#A8BDD4', marginTop: 2 }}>{token.amount}</div>
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </motion.div>
 

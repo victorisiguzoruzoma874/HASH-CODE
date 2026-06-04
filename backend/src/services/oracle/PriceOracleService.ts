@@ -14,6 +14,8 @@ const PYTH_FEEDS: Record<string, string> = {
   'BTC/USD':  '0xe62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43',
   'APT/USD':  '0x03ae4db29ed4ae33d323568895aa00337e658e348b37509f5372ae51f0af00d5',
   'USDC/USD': '0xeaa020c61cc479712813461ce153894a96a6c00b21ed0cfc2798d1f9a9e9c94a',
+  'USDT/USD': '0x2b89b9dc8fdf9f34709a5b106b472f0f39bb6ca9ce04b0fd7f2e971688e2e53b',
+  'SUI/USD':  '0x23d7315113f5b1d3ba7a83604c44b94d79f4fd69af77f804fc7f920a6dc65744',
 }
 
 /**
@@ -94,7 +96,7 @@ export class PriceOracleService {
   private async fetchFromCoinGecko(asset: string): Promise<number> {
     const idMap: Record<string, string> = {
       ETH: 'ethereum', BTC: 'bitcoin', APT: 'aptos',
-      USDC: 'usd-coin', USDT: 'tether',
+      USDC: 'usd-coin', USDT: 'tether', SUI: 'sui',
     }
     const id = idMap[asset.toUpperCase()]
     if (!id) throw new Error(`No CoinGecko ID for ${asset}`)
@@ -127,13 +129,13 @@ export class PriceOracleService {
   }
 
   private async refreshAll(): Promise<void> {
-    const assets = ['ETH', 'BTC', 'APT', 'USDC', 'USDT']
+    const assets = ['ETH', 'BTC', 'APT', 'USDC', 'USDT', 'SUI']
     await Promise.allSettled(assets.map(a => this.getUSDPrice(a)))
   }
 
   /** Returns a snapshot of all cached prices */
   async getAllPrices(): Promise<Record<string, PriceData>> {
-    const assets = ['ETH', 'BTC', 'APT', 'USDC', 'USDT']
+    const assets = ['ETH', 'BTC', 'APT', 'USDC', 'USDT', 'SUI']
     const result: Record<string, PriceData> = {}
 
     for (const asset of assets) {
