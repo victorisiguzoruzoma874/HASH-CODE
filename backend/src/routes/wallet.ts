@@ -179,7 +179,7 @@ walletRouter.post(
         },
         {
           headers: {
-            Authorization: `Bearer ${process.env.PAYCREST_API_KEY}`,
+            'API-Key': process.env.PAYCREST_API_KEY!,
             'Content-Type': 'application/json',
           },
         },
