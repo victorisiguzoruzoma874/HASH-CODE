@@ -1,8 +1,10 @@
 import { Router, type Request, type Response } from 'express'
 import crypto from 'crypto'
+import { Decimal } from '@prisma/client/runtime/library'
 import { prisma } from '../config/database'
 import { logger } from '../utils/logger'
 import { SuiTransactionService } from '../services/sui/SuiTransactionService'
+import { walletService } from '../services/wallet/WalletService'
 
 export const webhookRouter = Router()
 const txSvc = new SuiTransactionService()
@@ -93,6 +95,42 @@ webhookRouter.post('/paystack', async (req: Request, res: Response) => {
     }
     if (event.event === 'transfer.failed' || event.event === 'transfer.reversed') {
       await handlePayoutFailed(event.data.reference, 'paystack', event.data.reason ?? '')
+    }
+
+    // DVA credit — someone sent NGN to the user's virtual bank account
+    if (event.event === 'charge.success' && event.data?.channel === 'dedicated_nuban') {
+      const accountNumber: string = event.data?.authorization?.receiver_bank_account_number ?? ''
+      const amountKobo: number    = event.data?.amount ?? 0
+      const ngnAmount = new Decimal(amountKobo).div(100)
+
+      const user = await prisma.user.findFirst({
+        where: { virtualAccountNumber: accountNumber },
+        select: { id: true },
+      })
+      if (user) {
+        const wallet = await walletService.getOrCreateWallet(user.id)
+        const balBefore = new Decimal(wallet.ngnBalance)
+        const balAfter  = balBefore.plus(ngnAmount)
+
+        await prisma.$transaction(async (tx) => {
+          await tx.wallet.update({ where: { id: wallet.id }, data: { ngnBalance: balAfter } })
+          await tx.walletTransaction.create({
+            data: {
+              walletId:      wallet.id,
+              type:          'CREDIT',
+              source:        'CRYPTO_DEPOSIT',
+              status:        'COMPLETED',
+              amount:        ngnAmount,
+              balanceBefore: balBefore,
+              balanceAfter:  balAfter,
+              recipientId:   user.id,
+              reference:     event.data.reference,
+              description:   `Bank transfer deposit via ${event.data?.authorization?.receiver_bank ?? 'virtual account'}`,
+            },
+          })
+        })
+        logger.info(`[Webhook/Paystack/DVA] ₦${ngnAmount} credited to user ${user.id}`)
+      }
     }
 
     res.json({ status: 'ok' })
@@ -186,6 +224,63 @@ webhookRouter.post('/opay', async (req: Request, res: Response) => {
     res.json({ code: '00000', message: 'success' })
   } catch (err) {
     logger.error('[Webhook/Opay] Error', err)
+    res.status(500).json({ error: 'Processing failed' })
+  }
+})
+
+// ── POST /webhook/paycrest ────────────────────────────────────
+// Fires when a Paycrest order settles → credit user's NGN wallet
+
+webhookRouter.post('/paycrest', async (req: Request, res: Response) => {
+  try {
+    const rawBody = req.body.toString()
+    const sig     = req.headers['x-paycrest-signature'] as string ?? ''
+
+    const expected = crypto
+      .createHmac('sha256', process.env.PAYCREST_WEBHOOK_SECRET ?? '')
+      .update(rawBody)
+      .digest('hex')
+
+    if (!crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(sig.padEnd(expected.length, ' ')))) {
+      logger.warn('[Webhook/Paycrest] Invalid signature')
+      res.status(401).json({ error: 'Invalid signature' })
+      return
+    }
+
+    const event = JSON.parse(rawBody)
+    logger.info(`[Webhook/Paycrest] event=${event.event} orderId=${event.data?.id}`)
+
+    if (event.event === 'order.settled') {
+      const order        = event.data
+      const paycrestOrderId: string  = order.id
+      const ngnAmount    = new Decimal(order.amountReceived ?? order.amount ?? 0)
+      const cryptoAsset: string      = order.token ?? 'USDC'
+      const cryptoAmount = new Decimal(order.senderAmount ?? 0)
+      const exchangeRate = new Decimal(order.rate ?? 0)
+
+      // Identify user by the accountIdentifier we embedded in the order reference
+      const ref: string = order.reference ?? ''
+      // reference format: "WF-<userId>-<timestamp>"
+      const userId = ref.startsWith('WF-') ? ref.split('-')[1] : null
+
+      if (userId) {
+        await walletService.creditFromCryptoDeposit({
+          paycrestOrderId,
+          recipientUserId: userId,
+          ngnAmount,
+          cryptoAsset,
+          cryptoAmount,
+          exchangeRate,
+        })
+        logger.info(`[Webhook/Paycrest] ₦${ngnAmount} credited to user ${userId}`)
+      } else {
+        logger.warn(`[Webhook/Paycrest] Could not resolve userId from ref=${ref}`)
+      }
+    }
+
+    res.json({ status: 'ok' })
+  } catch (err) {
+    logger.error('[Webhook/Paycrest] Error', err)
     res.status(500).json({ error: 'Processing failed' })
   }
 })

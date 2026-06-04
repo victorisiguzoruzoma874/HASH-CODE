@@ -7,6 +7,15 @@ import { validate } from '../middleware/validate'
 import { requireAuth, type AuthRequest } from '../middleware/auth'
 import { AppError } from '../middleware/errorHandler'
 
+async function generateUniqueAccountNumber(): Promise<string> {
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const num = String(Math.floor(1000000000 + Math.random() * 9000000000))
+    const exists = await prisma.user.findUnique({ where: { hashpayAccountNumber: num } })
+    if (!exists) return num
+  }
+  throw new Error('Failed to generate unique account number')
+}
+
 export const authRouter = Router()
 
 function signToken(payload: object): string {
@@ -31,9 +40,17 @@ authRouter.post(
       if (existing) throw new AppError(409, 'Email already registered', 'EMAIL_EXISTS')
 
       const passwordHash = await bcrypt.hash(password, 12)
+      const hashpayAccountNumber = await generateUniqueAccountNumber()
       const user = await prisma.user.create({
-        data:   { email, passwordHash, fullName, role: 'USER' },
-        select: { id: true, email: true, fullName: true, role: true, createdAt: true },
+        data: {
+          email,
+          passwordHash,
+          fullName,
+          role: 'USER',
+          hashpayAccountNumber,
+          wallet: { create: { ngnBalance: 0 } },
+        },
+        select: { id: true, email: true, fullName: true, role: true, hashpayAccountNumber: true, createdAt: true },
       })
 
       const token = signToken({ sub: user.id, address: '', role: user.role })

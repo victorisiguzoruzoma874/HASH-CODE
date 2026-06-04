@@ -13,6 +13,7 @@ import { priceRouter }    from './routes/price'
 import { kycRouter }      from './routes/kyc'
 import { webhookRouter }  from './routes/webhook'
 import { healthRouter }   from './routes/health'
+import { walletRouter }   from './routes/wallet'
 import { errorHandler }   from './middleware/errorHandler'
 import { logger }         from './utils/logger'
 
@@ -60,6 +61,7 @@ app.use(`${API}/payout`,  payoutRouter)
 app.use(`${API}/airtime`, airtimeRouter)
 app.use(`${API}/price`,   priceRouter)
 app.use(`${API}/kyc`,     kycRouter)
+app.use(`${API}/wallet`,  walletRouter)
 app.use(`${API}/webhook`, webhookRouter)
 
 // ── 404 handler ──────────────────────────────────────────────

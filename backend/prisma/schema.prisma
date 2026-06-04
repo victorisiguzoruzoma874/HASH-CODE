@@ -1,5 +1,5 @@
 // HashPay Global — Prisma Schema
-// Run: npx prisma migrate dev --name add_sui_multicurrency
+// Run: npx prisma migrate dev --name add_wallet_system
 
 generator client {
   provider      = "prisma-client-js"
@@ -47,6 +47,26 @@ enum AirtimeStatus {
   FAILED
 }
 
+enum WalletTxType {
+  CREDIT
+  DEBIT
+}
+
+enum WalletTxStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REVERSED
+}
+
+enum WalletTxSource {
+  CRYPTO_DEPOSIT   // Paycrest order settled → NGN credited
+  INTERNAL_TRANSFER_IN
+  INTERNAL_TRANSFER_OUT
+  WITHDRAWAL       // User cashed out to bank
+  REVERSAL
+}
+
 // ── Models ───────────────────────────────────────────────────
 
 model User {
@@ -70,6 +90,15 @@ model User {
   // Preferred payout currency
   preferredCurrency String?  @default("NGN")  // ← NEW: NGN | GHS | KES | XOF | XAF
 
+  // HashPay internal account
+  hashpayAccountNumber String?  @unique  // e.g. "4031285796"
+
+  // Paystack / Paycrest virtual bank account
+  virtualAccountNumber String?
+  virtualBankName      String?
+  virtualBankCode      String?
+  virtualAccountRef    String?  // provider reference
+
   // KYC
   kycStatus        KycStatus @default(NONE)
   kycLevel         KycLevel  @default(NONE)
@@ -79,6 +108,9 @@ model User {
   escrowOrders     EscrowOrder[]
   airtimeTransactions AirtimeTransaction[]
   swapHistory      SwapRecord[]
+  wallet           Wallet?
+  sentTransfers    WalletTransaction[] @relation("SentTransfers")
+  receivedTransfers WalletTransaction[] @relation("ReceivedTransfers")
 
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
@@ -86,7 +118,71 @@ model User {
   @@index([aptosAddress])
   @@index([evmAddress])
   @@index([suiAddress])
+  @@index([hashpayAccountNumber])
   @@map("users")
+}
+
+// ── Wallet (one per user) ────────────────────────────────────
+
+model Wallet {
+  id           String   @id @default(uuid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id])
+
+  ngnBalance   Decimal  @default(0) @db.Decimal(18, 2)
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  transactions WalletTransaction[]
+
+  @@map("wallets")
+}
+
+// ── Wallet Transaction Ledger ────────────────────────────────
+
+model WalletTransaction {
+  id              String          @id @default(uuid())
+  walletId        String
+  wallet          Wallet          @relation(fields: [walletId], references: [id])
+
+  type            WalletTxType
+  source          WalletTxSource
+  status          WalletTxStatus  @default(PENDING)
+
+  amount          Decimal         @db.Decimal(18, 2)
+  balanceBefore   Decimal         @db.Decimal(18, 2)
+  balanceAfter    Decimal         @db.Decimal(18, 2)
+
+  // For internal transfers
+  senderId        String?
+  sender          User?           @relation("SentTransfers", fields: [senderId], references: [id])
+  recipientId     String?
+  recipient       User?           @relation("ReceivedTransfers", fields: [recipientId], references: [id])
+
+  // For crypto deposits (Paycrest)
+  paycrestOrderId String?         @unique
+  cryptoAsset     String?         // 'USDC' | 'USDT'
+  cryptoAmount    Decimal?        @db.Decimal(18, 8)
+  exchangeRate    Decimal?        @db.Decimal(18, 4)
+
+  // For withdrawals
+  bankAccountNumber String?
+  bankName          String?
+
+  reference       String?         @unique
+  description     String?
+  metadata        Json?
+
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([walletId])
+  @@index([senderId])
+  @@index([recipientId])
+  @@index([paycrestOrderId])
+  @@index([status])
+  @@map("wallet_transactions")
 }
 
 model EscrowOrder {
