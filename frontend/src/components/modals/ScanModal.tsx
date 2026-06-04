@@ -51,11 +51,26 @@ export const ScanModal: React.FC<ScanModalProps> = ({ isOpen, onClose, onResult 
         video: { facingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
       })
       streamRef.current = stream
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream
-        await videoRef.current.play()
+      // videoRef must already be in the DOM — attach and play
+      const video = videoRef.current
+      if (video) {
+        video.srcObject = stream
+        video.onloadedmetadata = () => {
+          video.play().then(() => setCameraState('active')).catch(() => setCameraState('error'))
+        }
+      } else {
+        // video not mounted yet — wait one tick
+        setTimeout(() => {
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream
+            videoRef.current.onloadedmetadata = () => {
+              videoRef.current?.play()
+                .then(() => setCameraState('active'))
+                .catch(() => setCameraState('error'))
+            }
+          }
+        }, 50)
       }
-      setCameraState('active')
     } catch (err: any) {
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
         setCameraState('denied')
@@ -65,40 +80,45 @@ export const ScanModal: React.FC<ScanModalProps> = ({ isOpen, onClose, onResult 
     }
   }, [facingMode, stopCamera])
 
-  // Scan loop using jsQR
+  // Scan loop — runs every animation frame when camera is active
   const scanFrame = useCallback(() => {
     const video  = videoRef.current
     const canvas = canvasRef.current
-    if (!video || !canvas || video.readyState < 2) {
+    if (!video || !canvas || video.readyState < 2 || video.videoWidth === 0) {
       rafRef.current = requestAnimationFrame(scanFrame); return
     }
     const ctx = canvas.getContext('2d')
-    if (!ctx) return
+    if (!ctx) { rafRef.current = requestAnimationFrame(scanFrame); return }
     canvas.width  = video.videoWidth
     canvas.height = video.videoHeight
     ctx.drawImage(video, 0, 0)
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-    const code = jsQR(imageData.data, imageData.width, imageData.height, {
-      inversionAttempts: 'dontInvert',
-    })
-    if (code?.data) {
-      setResult(code.data)
-      saveToRecent(code.data)
-      stopCamera()
-      setCameraState('idle')
-      onResult?.(code.data)
-      return
-    }
+    try {
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+      const code = jsQR(imageData.data, imageData.width, imageData.height, {
+        inversionAttempts: 'dontInvert',
+      })
+      if (code?.data) {
+        setResult(code.data)
+        saveToRecent(code.data)
+        stopCamera()
+        setCameraState('idle')
+        onResult?.(code.data)
+        return
+      }
+    } catch { /* skip frame */ }
     rafRef.current = requestAnimationFrame(scanFrame)
   }, [stopCamera, onResult])
 
+  // Start scan loop when active
   useEffect(() => {
     if (cameraState === 'active') {
+      cancelAnimationFrame(rafRef.current)
       rafRef.current = requestAnimationFrame(scanFrame)
     }
     return () => cancelAnimationFrame(rafRef.current)
   }, [cameraState, scanFrame])
 
+  // Open / close
   useEffect(() => {
     if (isOpen) {
       setResult(null)
@@ -108,11 +128,12 @@ export const ScanModal: React.FC<ScanModalProps> = ({ isOpen, onClose, onResult 
       setCameraState('idle')
     }
     return () => stopCamera()
-  }, [isOpen])
+  }, [isOpen]) // eslint-disable-line
 
+  // Facing mode change
   useEffect(() => {
-    if (isOpen && cameraState === 'idle' && !result) startCamera()
-  }, [facingMode])
+    if (isOpen) startCamera()
+  }, [facingMode]) // eslint-disable-line
 
   const saveToRecent = (data: string) => {
     setRecentScans(prev => {
@@ -212,14 +233,7 @@ export const ScanModal: React.FC<ScanModalProps> = ({ isOpen, onClose, onResult 
             {/* Camera area */}
             <div className="flex-1 flex flex-col items-center justify-center relative bg-[#0B0F1A] p-8">
 
-              {/* ── Camera states ── */}
-              {cameraState === 'requesting' && (
-                <div className="flex flex-col items-center gap-4 text-center">
-                  <Loader2 size={40} className="animate-spin text-[#39FF14]" />
-                  <p className="text-[14px] text-[#94A3B8]">Requesting camera access…</p>
-                </div>
-              )}
-
+              {/* ── Error states (shown instead of camera frame) ── */}
               {cameraState === 'denied' && (
                 <div className="flex flex-col items-center gap-4 text-center max-w-xs">
                   <div className="w-14 h-14 rounded-full bg-red-500/10 flex items-center justify-center">
@@ -227,9 +241,7 @@ export const ScanModal: React.FC<ScanModalProps> = ({ isOpen, onClose, onResult 
                   </div>
                   <div>
                     <p className="text-[15px] font-bold text-white mb-1">Camera Access Denied</p>
-                    <p className="text-[12px] text-[#94A3B8]">
-                      Enable camera permission in your browser settings, then try again.
-                    </p>
+                    <p className="text-[12px] text-[#94A3B8]">Enable camera permission in your browser settings, then try again.</p>
                   </div>
                   <button onClick={startCamera}
                     className="px-5 py-2.5 rounded-full text-[13px] font-bold bg-[#39FF14]/10 text-[#39FF14] border border-[#39FF14]/30 hover:bg-[#39FF14]/20 transition-all">
@@ -241,53 +253,62 @@ export const ScanModal: React.FC<ScanModalProps> = ({ isOpen, onClose, onResult 
               {cameraState === 'unsupported' && (
                 <div className="flex flex-col items-center gap-4 text-center max-w-xs">
                   <AlertCircle size={36} className="text-yellow-400" />
-                  <p className="text-[14px] text-[#94A3B8]">Camera not supported on this browser. Use "Upload from Gallery" instead.</p>
+                  <p className="text-[14px] text-[#94A3B8]">Camera not supported. Use "Upload from Gallery" instead.</p>
                 </div>
               )}
 
-              {/* ── Live camera feed ── */}
-              {(cameraState === 'active' || cameraState === 'idle') && !result && (
-                <div className="relative w-full max-w-[400px] aspect-square">
-                  <video
-                    ref={videoRef}
-                    autoPlay playsInline muted
-                    className="w-full h-full rounded-[20px] object-cover"
-                    style={{ transform: `scale(${zoom})`, transition: 'transform 0.2s' }}
-                  />
-                  {/* Hidden canvas for frame analysis */}
-                  <canvas ref={canvasRef} className="hidden" />
+              {/* ── Camera frame — always in DOM so videoRef is always attached ── */}
+              <div className={`relative w-full max-w-[400px] aspect-square ${result || cameraState === 'denied' || cameraState === 'unsupported' || cameraState === 'error' ? 'hidden' : ''}`}>
 
-                  {/* Corner brackets */}
-                  <div className="absolute inset-0 pointer-events-none">
-                    <div className="absolute top-3 left-3 w-8 h-8 border-[#39FF14] rounded-tl-[6px]"
-                      style={{ borderTopWidth: 3, borderLeftWidth: 3 }} />
-                    <div className="absolute top-3 right-3 w-8 h-8 border-[#39FF14] rounded-tr-[6px]"
-                      style={{ borderTopWidth: 3, borderRightWidth: 3 }} />
-                    <div className="absolute bottom-3 left-3 w-8 h-8 border-[#39FF14] rounded-bl-[6px]"
-                      style={{ borderBottomWidth: 3, borderLeftWidth: 3 }} />
-                    <div className="absolute bottom-3 right-3 w-8 h-8 border-[#39FF14] rounded-br-[6px]"
-                      style={{ borderBottomWidth: 3, borderRightWidth: 3 }} />
+                {/* Requesting overlay */}
+                {cameraState === 'requesting' && (
+                  <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-[#050810] rounded-[20px]">
+                    <Loader2 size={32} className="animate-spin text-[#39FF14]" />
+                    <p className="text-[13px] text-[#94A3B8]">Starting camera…</p>
                   </div>
+                )}
 
-                  {/* Scan line */}
+                <video
+                  ref={videoRef}
+                  autoPlay playsInline muted
+                  className="w-full h-full rounded-[20px] object-cover bg-[#050810]"
+                  style={{ transform: `scale(${zoom})`, transition: 'transform 0.2s' }}
+                />
+                {/* Canvas used only for pixel analysis — invisible */}
+                <canvas ref={canvasRef} style={{ display: 'none' }} />
+
+                {/* Corner brackets */}
+                <div className="absolute inset-0 pointer-events-none">
+                  <div className="absolute top-3 left-3 w-8 h-8 border-[#39FF14] rounded-tl-[6px]"
+                    style={{ borderTopWidth: 3, borderLeftWidth: 3 }} />
+                  <div className="absolute top-3 right-3 w-8 h-8 border-[#39FF14] rounded-tr-[6px]"
+                    style={{ borderTopWidth: 3, borderRightWidth: 3 }} />
+                  <div className="absolute bottom-3 left-3 w-8 h-8 border-[#39FF14] rounded-bl-[6px]"
+                    style={{ borderBottomWidth: 3, borderLeftWidth: 3 }} />
+                  <div className="absolute bottom-3 right-3 w-8 h-8 border-[#39FF14] rounded-br-[6px]"
+                    style={{ borderBottomWidth: 3, borderRightWidth: 3 }} />
+                </div>
+
+                {/* Scan line — only when active */}
+                {cameraState === 'active' && (
                   <motion.div
                     animate={{ top: ['15%', '85%', '15%'] }}
-                    transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
-                    className="absolute left-[10%] right-[10%] h-0.5 bg-gradient-to-r from-transparent via-[#39FF14] to-transparent opacity-70"
+                    transition={{ duration: 2.5, repeat: Infinity, ease: 'linear' }}
+                    className="absolute left-[10%] right-[10%] h-0.5 bg-gradient-to-r from-transparent via-[#39FF14] to-transparent opacity-80"
                     style={{ position: 'absolute' }}
                   />
+                )}
 
-                  {/* Flip camera button */}
-                  <button
-                    onClick={() => setFacingMode(f => f === 'environment' ? 'user' : 'environment')}
-                    className="absolute top-4 right-4 w-8 h-8 rounded-full bg-black/40 flex items-center justify-center text-white/70 hover:text-white transition-all"
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M20 7H4M4 7l4-4M4 7l4 4M4 17h16M16 17l4 4M16 17l4-4"/>
-                    </svg>
-                  </button>
-                </div>
-              )}
+                {/* Flip camera */}
+                <button
+                  onClick={() => setFacingMode(f => f === 'environment' ? 'user' : 'environment')}
+                  className="absolute top-4 right-4 w-8 h-8 rounded-full bg-black/50 flex items-center justify-center text-white/70 hover:text-white transition-all"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M20 7H4M4 7l4-4M4 7l4 4M4 17h16M16 17l4 4M16 17l4-4"/>
+                  </svg>
+                </button>
+              </div>
 
               {/* ── Result ── */}
               {result && result !== 'NO_QR_FOUND' && (
