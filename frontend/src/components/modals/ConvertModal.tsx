@@ -2,19 +2,20 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   X, ChevronDown, ArrowRight, Shield, CheckCircle,
-  Loader2, ExternalLink, Building2, Zap, Info, AlertCircle
+  Loader2, ExternalLink, Building2, Zap, Info, AlertCircle, RefreshCw
 } from 'lucide-react'
 import { useStore } from '../../store/useStore'
-import { payoutApi } from '../../lib/api'
+import { payoutApi, priceApi } from '../../lib/api'
 import type { EscrowStatus } from '../../store/useStore'
 
 interface ConvertModalProps { isOpen: boolean; onClose: () => void }
 
-const ASSETS = [
-  { symbol: 'USDT', name: 'Tether USD',  color: '#057A4B', rate: 1565 },
-  { symbol: 'USDC', name: 'USD Coin',    color: '#0891B2', rate: 1562 },
-  { symbol: 'ETH',  name: 'Ethereum',    color: '#0B50D4', rate: 5_510_000 },
-  { symbol: 'APT',  name: 'Aptos',       color: '#7C3AED', rate: 14_200 },
+const ASSET_META = [
+  { symbol: 'USDT', name: 'Tether USD', color: '#057A4B' },
+  { symbol: 'USDC', name: 'USD Coin',   color: '#0891B2' },
+  { symbol: 'SUI',  name: 'Sui',        color: '#4CA3FF' },
+  { symbol: 'ETH',  name: 'Ethereum',   color: '#0B50D4' },
+  { symbol: 'APT',  name: 'Aptos',      color: '#7C3AED' },
 ]
 
 const BANKS = [
@@ -64,7 +65,7 @@ export const ConvertModal: React.FC<ConvertModalProps> = ({ isOpen, onClose }) =
   const clearActiveOrder    = useStore(s => s.clearActiveOrder)
 
   const [step, setStep]               = useState<'form' | 'pipeline'>('form')
-  const [asset, setAsset]             = useState(ASSETS[0])
+  const [selectedMeta, setSelectedMeta] = useState(ASSET_META[0] as typeof ASSET_META[number])
   const [amount, setAmount]           = useState('')
   const [bank, setBank]               = useState(BANKS[0])
   const [accountNo, setAccountNo]     = useState('')
@@ -75,9 +76,49 @@ export const ConvertModal: React.FC<ConvertModalProps> = ({ isOpen, onClose }) =
   const [showAssetDrop, setShowAssetDrop] = useState(false)
   const [pipelineStep, setPipelineStep]   = useState(0)
 
-  const fiatAmount = amount ? Math.floor(parseFloat(amount) * asset.rate).toLocaleString() : '0'
-  const fee        = amount ? Math.floor(parseFloat(amount) * asset.rate * 0.005).toLocaleString() : '0'
-  const netAmount  = amount ? Math.floor(parseFloat(amount) * asset.rate * 0.995).toLocaleString() : '0'
+  // ── Live prices ───────────────────────────────────────────────
+  const [liveRates, setLiveRates]   = useState<Record<string, number>>({
+    USDT: 1565, USDC: 1562, SUI: 5000, ETH: 5_510_000, APT: 14_200,
+  })
+  const [ratesLoading, setRatesLoading] = useState(false)
+  const [ratesStale, setRatesStale]     = useState(false)
+  const [lastUpdated, setLastUpdated]   = useState<Date | null>(null)
+
+  const fetchLiveRates = useCallback(async () => {
+    setRatesLoading(true)
+    try {
+      const [pricesRes, fxRes] = await Promise.all([
+        priceApi.getAll(),
+        priceApi.convert('USDC', 'NGN'),
+      ])
+      const ngnRate = fxRes.rate || 1565
+      const rates: Record<string, number> = {}
+      Object.entries(pricesRes.prices).forEach(([symbol, data]) => {
+        rates[symbol] = Math.round(data.price * ngnRate)
+      })
+      setLiveRates(prev => ({ ...prev, ...rates }))
+      setLastUpdated(new Date())
+      setRatesStale(false)
+    } catch {
+      setRatesStale(true)
+    } finally {
+      setRatesLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!isOpen) return
+    fetchLiveRates()
+    const interval = setInterval(() => { fetchLiveRates(); }, 30_000)
+    return () => clearInterval(interval)
+  }, [isOpen, fetchLiveRates])
+
+  const currentRate = liveRates[selectedMeta.symbol] ?? 0
+  const asset = { ...selectedMeta, rate: currentRate }
+
+  const fiatAmount = amount && currentRate ? Math.floor(parseFloat(amount) * currentRate).toLocaleString() : '0'
+  const fee        = amount && currentRate ? Math.floor(parseFloat(amount) * currentRate * 0.005).toLocaleString() : '0'
+  const netAmount  = amount && currentRate ? Math.floor(parseFloat(amount) * currentRate * 0.995).toLocaleString() : '0'
 
   const verifyAccount = useCallback(async (no: string) => {
     if (no.length !== 10) { setAccountName(''); setVerifyError(''); return }
@@ -203,20 +244,25 @@ export const ConvertModal: React.FC<ConvertModalProps> = ({ isOpen, onClose }) =
                         <AnimatePresence>
                           {showAssetDrop && (
                             <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 4 }}
-                              className="absolute right-0 top-full mt-1 w-[180px] rounded-[12px] overflow-hidden z-20"
+                              className="absolute right-0 top-full mt-1 w-[200px] rounded-[12px] overflow-hidden z-20"
                               style={{ background: '#fff', border: '1px solid #DDE6F2', boxShadow: '0 8px 24px rgba(10,25,41,0.12)' }}>
-                              {ASSETS.map(a => (
-                                <button key={a.symbol} onClick={() => { setAsset(a); setShowAssetDrop(false) }}
+                              {ASSET_META.map(a => (
+                                <button key={a.symbol} onClick={() => { setSelectedMeta(a); setShowAssetDrop(false) }}
                                   className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left transition-all"
                                   style={{ color: '#0A1929' }}
                                   onMouseEnter={e => { e.currentTarget.style.background = '#F4F8FD' }}
                                   onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>
                                   <div className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white flex-shrink-0"
                                     style={{ background: a.color }}>{a.symbol[0]}</div>
-                                  <div>
+                                  <div className="flex-1">
                                     <div className="text-[13px] font-semibold">{a.symbol}</div>
                                     <div className="text-[10px]" style={{ color: '#7A97B4' }}>{a.name}</div>
                                   </div>
+                                  {liveRates[a.symbol] ? (
+                                    <span className="text-[10px] font-mono font-bold" style={{ color: '#0B50D4' }}>
+                                      ₦{liveRates[a.symbol].toLocaleString()}
+                                    </span>
+                                  ) : null}
                                 </button>
                               ))}
                             </motion.div>
@@ -224,8 +270,16 @@ export const ConvertModal: React.FC<ConvertModalProps> = ({ isOpen, onClose }) =
                         </AnimatePresence>
                       </div>
                     </div>
-                    <div className="text-[12px] font-mono" style={{ color: '#A8BDD4' }}>
-                      Rate: 1 {asset.symbol} = ₦{asset.rate.toLocaleString()}
+                    <div className="flex items-center justify-between">
+                      <span className="text-[12px] font-mono" style={{ color: '#A8BDD4' }}>
+                        Rate: 1 {asset.symbol} = ₦{currentRate > 0 ? currentRate.toLocaleString() : '…'}
+                      </span>
+                      <button onClick={fetchLiveRates} disabled={ratesLoading}
+                        className="flex items-center gap-1 text-[10px] font-bold transition-all"
+                        style={{ color: ratesStale ? '#D92D20' : '#0B50D4' }}>
+                        <RefreshCw size={10} className={ratesLoading ? 'animate-spin' : ''} />
+                        {ratesLoading ? 'Updating…' : ratesStale ? 'Stale' : lastUpdated ? `${Math.round((Date.now() - lastUpdated.getTime()) / 1000)}s ago` : 'Live'}
+                      </button>
                     </div>
                   </div>
                 </div>
