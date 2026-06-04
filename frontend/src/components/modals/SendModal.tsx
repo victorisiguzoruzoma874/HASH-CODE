@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Modal } from '../ui/Modal'
 import { ChevronDown, Clipboard, Shield, Loader2, CheckCircle2, AlertCircle, User2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -31,7 +31,7 @@ function useDebounce<T>(value: T, delay: number): T {
 }
 
 export const SendModal: React.FC<SendModalProps> = ({ isOpen, onClose }) => {
-  const { user } = useApiStore()
+  useApiStore()
   const [tab, setTab]           = useState<Tab>('hashpay')
 
   // HashPay transfer state
