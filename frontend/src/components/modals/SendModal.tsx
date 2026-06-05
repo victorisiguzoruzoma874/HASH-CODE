@@ -50,7 +50,7 @@ export const SendModal: React.FC<SendModalProps> = ({ isOpen, onClose }) => {
   const [cryptoLoading, setCryptoLoading] = useState(false)
   const [cryptoSuccess, setCryptoSuccess] = useState(false)
 
-  const token = () => localStorage.getItem('hashpay_token') ?? ''
+  const token = () => localStorage.getItem('hp_token') ?? ''
 
   // Fetch NGN balance on open
   useEffect(() => {

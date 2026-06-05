@@ -64,7 +64,7 @@ export const ReceiveModal: React.FC<ReceiveModalProps> = ({ isOpen, onClose }) =
 
   useEffect(() => {
     if (!isOpen) return
-    const token = localStorage.getItem('hashpay_token')
+    const token = localStorage.getItem('hp_token')
     if (!token) return
     setLoading(true)
     fetch(`${BASE}/wallet/balance`, { headers: { Authorization: `Bearer ${token}` } })
@@ -75,7 +75,7 @@ export const ReceiveModal: React.FC<ReceiveModalProps> = ({ isOpen, onClose }) =
   }, [isOpen])
 
   const createVirtualAccount = async () => {
-    const token = localStorage.getItem('hashpay_token')
+    const token = localStorage.getItem('hp_token')
     if (!token) return
     setCreating(true)
     setError(null)
