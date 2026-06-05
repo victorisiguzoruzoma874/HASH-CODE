@@ -1,7 +1,7 @@
 import { Decimal } from '@prisma/client/runtime/library'
+import { v4 as uuidv4 } from 'uuid'
 import { prisma } from '../../config/database'
 import { AppError } from '../../middleware/errorHandler'
-import { nanoid } from 'nanoid'
 
 export class WalletService {
   // ── Get or create wallet for a user ──────────────────────────
@@ -61,7 +61,7 @@ export class WalletService {
     }
 
     const recipientWallet = await this.getOrCreateWallet(recipient.id)
-    const ref = `TRF-${nanoid(16).toUpperCase()}`
+    const ref = `TRF-${uuidv4().replace(/-/g, '').toUpperCase().slice(0, 16)}`
 
     await prisma.$transaction(async (tx) => {
       const senderBefore  = new Decimal(senderWallet.ngnBalance)

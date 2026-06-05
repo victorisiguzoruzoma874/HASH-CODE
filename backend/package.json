@@ -13,6 +13,9 @@
     "lint": "eslint src --ext .ts"
   },
   "dependencies": {
+    "@aptos-labs/ts-sdk": "^1.21.0",
+    "@mysten/sui": "1.45.2",
+    "@prisma/client": "^5.14.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/bull": "^4.10.4",
     "@types/cors": "^2.8.17",
@@ -21,10 +24,6 @@
     "@types/morgan": "^1.9.9",
     "@types/node": "^20.14.0",
     "@types/uuid": "^10.0.0",
-    "typescript": "^5.4.0",
-    "@aptos-labs/ts-sdk": "^1.21.0",
-    "@mysten/sui": "1.45.2",
-    "@prisma/client": "^5.14.0",
     "axios": "^1.7.0",
     "bcryptjs": "^2.4.3",
     "bull": "^4.16.5",
@@ -40,6 +39,7 @@
     "jsonwebtoken": "^9.0.0",
     "morgan": "^1.10.0",
     "prisma": "^5.14.0",
+    "typescript": "^5.4.0",
     "uuid": "^10.0.0",
     "winston": "^3.13.0",
     "zod": "^3.23.0"
