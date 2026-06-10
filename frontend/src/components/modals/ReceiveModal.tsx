@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Modal } from '../ui/Modal'
 import { Copy, Share2, Building2, Wallet, ChevronRight, CheckCircle2, Loader2 } from 'lucide-react'
 import { HashPayIcon } from '../ui/HashPayLogo'
+import { QRCode } from '../ui/QRCode'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useApiStore } from '../../store/useApiStore'
 
@@ -61,6 +62,17 @@ export const ReceiveModal: React.FC<ReceiveModalProps> = ({ isOpen, onClose }) =
   const [loading, setLoading]   = useState(false)
   const [creating, setCreating] = useState(false)
   const [error, setError]       = useState<string | null>(null)
+  const [chain, setChain]       = useState<'evm' | 'sui' | 'aptos'>('evm')
+
+  // Crypto chains the user actually has an address for
+  const cryptoChains = ([
+    { key: 'evm',   label: 'EVM',   address: user?.evmAddress },
+    { key: 'sui',   label: 'Sui',   address: user?.suiAddress },
+    { key: 'aptos', label: 'Aptos', address: user?.aptosAddress },
+  ] as const).filter(c => !!c.address)
+
+  const activeChain   = cryptoChains.find(c => c.key === chain) ?? cryptoChains[0]
+  const activeAddress = activeChain?.address ?? ''
 
   useEffect(() => {
     if (!isOpen) return
@@ -150,6 +162,11 @@ export const ReceiveModal: React.FC<ReceiveModalProps> = ({ isOpen, onClose }) =
                         HashPay Account
                       </span>
                     </div>
+                    {walletData?.hashpayAccountNumber && (
+                      <div className="p-2.5 rounded-[14px] bg-white" style={{ border: '1.5px solid #DDE6F2' }}>
+                        <QRCode value={walletData.hashpayAccountNumber} size={172} />
+                      </div>
+                    )}
                     <div className="text-[32px] font-black font-mono tracking-widest" style={{ color: '#0A1929' }}>
                       {walletData?.hashpayAccountNumber
                         ? walletData.hashpayAccountNumber.replace(/(\d{4})(\d{3})(\d{3})/, '$1 $2 $3')
@@ -192,6 +209,9 @@ export const ReceiveModal: React.FC<ReceiveModalProps> = ({ isOpen, onClose }) =
                       <div className="flex flex-col items-center gap-3 py-4 rounded-[16px]"
                         style={{ background: '#EEF3FB', border: '1.5px solid #DDE6F2' }}>
                         <Building2 size={24} style={{ color: '#0B50D4' }} />
+                        <div className="p-2.5 rounded-[14px] bg-white" style={{ border: '1.5px solid #DDE6F2' }}>
+                          <QRCode value={walletData.virtualAccount.accountNumber} size={160} fgColor="#0B50D4" />
+                        </div>
                         <div className="text-[28px] font-black font-mono tracking-widest" style={{ color: '#0A1929' }}>
                           {walletData.virtualAccount.accountNumber}
                         </div>
@@ -250,26 +270,55 @@ export const ReceiveModal: React.FC<ReceiveModalProps> = ({ isOpen, onClose }) =
               {/* ── Crypto tab ─────────────────────────────── */}
               {tab === 'crypto' && (
                 <>
-                  <div className="flex flex-col items-center gap-2 py-3 rounded-[16px]"
-                    style={{ background: '#EEF3FB', border: '1.5px solid #DDE6F2' }}>
-                    <span className="text-[10px] font-bold tracking-[0.1em] uppercase" style={{ color: '#7A97B4' }}>
-                      EVM Wallet Address
-                    </span>
-                    <div className="text-[13px] font-mono font-semibold px-4 text-center break-all" style={{ color: '#0A1929' }}>
-                      {user?.evmAddress ?? '—'}
+                  {cryptoChains.length === 0 ? (
+                    <div className="flex flex-col items-center gap-3 py-8 text-center">
+                      <Wallet size={28} style={{ color: '#A8BDD4' }} />
+                      <p className="text-[12px]" style={{ color: '#7A97B4' }}>
+                        No crypto wallet addresses linked to your account yet.
+                      </p>
                     </div>
-                  </div>
+                  ) : (
+                    <>
+                      {/* Chain selector */}
+                      {cryptoChains.length > 1 && (
+                        <div className="flex gap-1 p-1 rounded-[12px]" style={{ background: '#EEF3FB' }}>
+                          {cryptoChains.map(c => (
+                            <button key={c.key} onClick={() => setChain(c.key)}
+                              className="flex-1 py-1.5 rounded-[9px] text-[12px] font-bold transition-all"
+                              style={activeChain?.key === c.key
+                                ? { background: '#fff', color: '#0B50D4', boxShadow: '0 1px 6px rgba(11,80,212,0.12)' }
+                                : { color: '#7A97B4' }
+                              }
+                            >
+                              {c.label}
+                            </button>
+                          ))}
+                        </div>
+                      )}
 
-                  {user?.evmAddress && <AccountRow label="EVM Address" value={user.evmAddress} />}
-                  {user?.suiAddress && <AccountRow label="Sui Address" value={user.suiAddress} />}
-                  {user?.aptosAddress && <AccountRow label="Aptos Address" value={user.aptosAddress} />}
+                      <div className="flex flex-col items-center gap-3 py-3 rounded-[16px]"
+                        style={{ background: '#EEF3FB', border: '1.5px solid #DDE6F2' }}>
+                        <span className="text-[10px] font-bold tracking-[0.1em] uppercase" style={{ color: '#7A97B4' }}>
+                          {activeChain?.label} Wallet Address
+                        </span>
+                        <div className="p-2.5 rounded-[14px] bg-white" style={{ border: '1.5px solid #DDE6F2' }}>
+                          <QRCode value={activeAddress} size={172} />
+                        </div>
+                        <div className="text-[13px] font-mono font-semibold px-4 text-center break-all" style={{ color: '#0A1929' }}>
+                          {activeAddress}
+                        </div>
+                      </div>
 
-                  <div className="flex gap-2.5 p-3.5 rounded-[12px]"
-                    style={{ background: '#FFF8EC', border: '1px solid #F59E0B30' }}>
-                    <p className="text-[11px] leading-relaxed" style={{ color: '#B45309' }}>
-                      Only send supported tokens to these addresses. Sending unsupported assets may result in permanent loss.
-                    </p>
-                  </div>
+                      <AccountRow label={`${activeChain?.label} Address`} value={activeAddress} />
+
+                      <div className="flex gap-2.5 p-3.5 rounded-[12px]"
+                        style={{ background: '#FFF8EC', border: '1px solid #F59E0B30' }}>
+                        <p className="text-[11px] leading-relaxed" style={{ color: '#B45309' }}>
+                          Only send supported {activeChain?.label} tokens to this address. Sending unsupported assets may result in permanent loss.
+                        </p>
+                      </div>
+                    </>
+                  )}
                 </>
               )}
 
