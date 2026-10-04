@@ -34,7 +34,8 @@ export const SwapPanel: React.FC = () => {
       const res = await priceApi.getAll()
       const map: Record<string, number> = {}
       Object.entries(res.prices).forEach(([k, v]) => { map[k] = v.price })
-      setPrices(map)
+      // Merge so a partial response never drops a price
+      setPrices(prev => ({ ...prev, ...map }))
       setLastUpdated(new Date())
     } catch { /* silent */ }
     finally { setFetching(false) }

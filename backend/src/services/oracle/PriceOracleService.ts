@@ -47,8 +47,20 @@ const COINGECKO_IDS: Record<string, string> = {
  *
  * Also provides NGN conversion rates via a dedicated FX endpoint.
  */
+const TRACKED_ASSETS = [
+  'ETH', 'BTC', 'SUI', 'APT', 'USDC', 'USDT',
+  'SOL', 'BNB', 'MATIC', 'AVAX', 'LINK', 'UNI',
+  'AAVE', 'ARB', 'DOGE', 'ADA', 'DOT', 'OP', 'DAI',
+]
+
+// Last known good values are served when every provider fails, so prices never vanish
+const STALE_MAX_AGE_MS = 15 * 60 * 1000
+
 export class PriceOracleService {
   private refreshInterval: ReturnType<typeof setInterval> | null = null
+  private lastGood  = new Map<string, { price: number; at: number }>()
+  private inflight: Promise<void> | null = null
+  private fxLastGood = new Map<string, number>()
 
   async start(): Promise<void> {
     // Pre-warm cache
@@ -62,10 +74,18 @@ export class PriceOracleService {
     if (this.refreshInterval) clearInterval(this.refreshInterval)
   }
 
+  // Redis problems must never take prices down
+  private async safeGet<T>(key: string): Promise<T | null> {
+    try { return await cacheGet<T>(key) } catch { return null }
+  }
+  private async safeSet(key: string, value: unknown, ttl: number): Promise<void> {
+    try { await cacheSet(key, value, ttl) } catch { /* ignore */ }
+  }
+
   /** Get price of asset in target currency (e.g. ETH → NGN) */
   async getRate(asset: string, target: string): Promise<number> {
     const cacheKey = `price:${asset}:${target}`
-    const cached   = await cacheGet<number>(cacheKey)
+    const cached   = await this.safeGet<number>(cacheKey)
     if (cached) return cached
 
     const usdPrice = await this.getUSDPrice(asset)
@@ -74,131 +94,150 @@ export class PriceOracleService {
     const fxRate = await this.getFXRate('USD', target)
     const rate   = usdPrice * fxRate
 
-    await cacheSet(cacheKey, rate, PRICE_CACHE_TTL)
+    await this.safeSet(cacheKey, rate, PRICE_CACHE_TTL)
     return rate
   }
 
   async getUSDPrice(asset: string): Promise<number> {
-    const cacheKey = `price:${asset}:USD`
-    const cached   = await cacheGet<number>(cacheKey)
+    const key = asset.toUpperCase()
+    const hit = await this.readPrice(key)
+    if (hit !== null) return hit
+
+    await this.refreshAll()
+
+    const fresh = await this.readPrice(key)
+    if (fresh !== null) return fresh
+    throw new Error(`No price available for ${key}`)
+  }
+
+  /** Fresh cache first, then last known good (if not too old) */
+  private async readPrice(asset: string): Promise<number | null> {
+    const cached = await this.safeGet<number>(`price:${asset}:USD`)
     if (cached) return cached
-
-    // 1. Try Pyth
-    try {
-      const price = await this.fetchFromPyth(asset)
-      await cacheSet(cacheKey, price, PRICE_CACHE_TTL)
-      return price
-    } catch {
-      logger.warn(`[PriceOracle] Pyth failed for ${asset}, trying CoinGecko`)
-    }
-
-    // 2. Try CoinGecko
-    try {
-      const price = await this.fetchFromCoinGecko(asset)
-      await cacheSet(cacheKey, price, PRICE_CACHE_TTL)
-      return price
-    } catch {
-      logger.warn(`[PriceOracle] CoinGecko failed for ${asset}, trying CoinCap`)
-    }
-
-    // 3. Try CoinCap
-    const price = await this.fetchFromCoinCap(asset)
-    await cacheSet(cacheKey, price, PRICE_CACHE_TTL)
-    return price
+    const stale = this.lastGood.get(asset)
+    if (stale && Date.now() - stale.at < STALE_MAX_AGE_MS) return stale.price
+    return null
   }
 
-  private async fetchFromPyth(asset: string): Promise<number> {
-    const feedId = PYTH_FEEDS[`${asset.toUpperCase()}/USD`]
-    if (!feedId) throw new Error(`No Pyth feed for ${asset}`)
-
-    const res = await axios.get(
-      `${process.env.PYTH_ENDPOINT ?? 'https://hermes.pyth.network'}/v2/updates/price/latest`,
-      { params: { ids: [feedId] } }
-    )
-
-    const parsed = res.data.parsed?.[0]
-    if (!parsed) throw new Error('No price data from Pyth')
-
-    const price = parsed.price.price * Math.pow(10, parsed.price.expo)
-    return Math.abs(price)
+  private async store(prices: Record<string, number>): Promise<void> {
+    const now = Date.now()
+    await Promise.all(Object.entries(prices).map(([asset, price]) => {
+      this.lastGood.set(asset, { price, at: now })
+      return this.safeSet(`price:${asset}:USD`, price, PRICE_CACHE_TTL)
+    }))
   }
 
-  private async fetchFromCoinGecko(asset: string): Promise<number> {
-    const id = COINGECKO_IDS[asset.toUpperCase()]
-    if (!id) throw new Error(`No CoinGecko ID for ${asset}`)
-
+  /** One batched CoinGecko request for every asset (19 separate calls got rate-limited) */
+  private async fetchBatchFromCoinGecko(assets: string[]): Promise<Record<string, number>> {
+    const ids = assets.map(a => COINGECKO_IDS[a]).filter(Boolean)
     const res = await axios.get(
       `https://api.coingecko.com/api/v3/simple/price`,
       {
-        params: { ids: id, vs_currencies: 'usd' },
+        params: { ids: ids.join(','), vs_currencies: 'usd' },
         headers: process.env.COINGECKO_API_KEY
           ? { 'x-cg-demo-api-key': process.env.COINGECKO_API_KEY }
           : {},
         timeout: 8000,
       }
     )
-
-    const price = res.data[id]?.usd
-    if (!price) throw new Error(`CoinGecko returned no price for ${asset}`)
-    return price
+    const out: Record<string, number> = {}
+    for (const a of assets) {
+      const price = res.data?.[COINGECKO_IDS[a]]?.usd
+      if (price) out[a] = price
+    }
+    return out
   }
 
-  // CoinCap as third-level fallback (no API key, generous rate limit)
-  private async fetchFromCoinCap(asset: string): Promise<number> {
-    const idMap: Record<string, string> = {
-      ETH: 'ethereum', BTC: 'bitcoin', SUI: 'sui', APT: 'aptos',
-      USDC: 'usd-coin', USDT: 'tether', SOL: 'solana', BNB: 'binance-coin',
-      MATIC: 'polygon', AVAX: 'avalanche', LINK: 'chainlink', UNI: 'uniswap',
-      AAVE: 'aave', ARB: 'arbitrum', DOGE: 'dogecoin', ADA: 'cardano',
-      DOT: 'polkadot', OP: 'optimism',
-    }
-    const id = idMap[asset.toUpperCase()]
-    if (!id) throw new Error(`No CoinCap ID for ${asset}`)
+  /** One batched Pyth request for every asset that has a feed */
+  private async fetchBatchFromPyth(assets: string[]): Promise<Record<string, number>> {
+    const feeds = assets
+      .filter(a => PYTH_FEEDS[`${a}/USD`])
+      .map(a => ({ asset: a, id: PYTH_FEEDS[`${a}/USD`] }))
+    if (feeds.length === 0) return {}
 
-    const res = await axios.get(`https://api.coincap.io/v2/assets/${id}`, { timeout: 8000 })
-    const price = parseFloat(res.data?.data?.priceUsd ?? '0')
-    if (!price) throw new Error(`CoinCap returned no price for ${asset}`)
-    return price
+    const res = await axios.get(
+      `${process.env.PYTH_ENDPOINT ?? 'https://hermes.pyth.network'}/v2/updates/price/latest`,
+      { params: { ids: feeds.map(f => f.id) }, timeout: 8000 }
+    )
+    const out: Record<string, number> = {}
+    for (const p of res.data?.parsed ?? []) {
+      const feed = feeds.find(f => f.id.replace(/^0x/, '') === p.id)
+      if (feed) out[feed.asset] = Math.abs(p.price.price * Math.pow(10, p.price.expo))
+    }
+    return out
   }
 
   private async getFXRate(from: string, to: string): Promise<number> {
     const cacheKey = `fx:${from}:${to}`
-    const cached   = await cacheGet<number>(cacheKey)
+    const cached   = await this.safeGet<number>(cacheKey)
     if (cached) return cached
 
-    // Use exchangerate-api or similar
-    const res = await axios.get(
-      `https://open.er-api.com/v6/latest/${from}`
-    )
-    const rate = res.data.rates?.[to] ?? 1
-    await cacheSet(cacheKey, rate, 300)  // cache FX for 5 min
-    return rate
+    try {
+      const res  = await axios.get(`https://open.er-api.com/v6/latest/${from}`, { timeout: 8000 })
+      const rate = res.data.rates?.[to]
+      if (!rate) throw new Error(`No ${to} rate in FX response`)
+      this.fxLastGood.set(`${from}:${to}`, rate)
+      await this.safeSet(cacheKey, rate, 300)  // cache FX for 5 min
+      return rate
+    } catch (err: any) {
+      const stale = this.fxLastGood.get(`${from}:${to}`)
+      if (stale) {
+        logger.warn(`[PriceOracle] FX fetch failed (${err?.message}), serving last known ${from}/${to}`)
+        return stale
+      }
+      throw err
+    }
   }
 
-  private async refreshAll(): Promise<void> {
-    const assets = [
-      'ETH', 'BTC', 'SUI', 'APT', 'USDC', 'USDT',
-      'SOL', 'BNB', 'MATIC', 'AVAX', 'LINK', 'UNI',
-      'AAVE', 'ARB', 'DOGE', 'ADA', 'DOT', 'OP', 'DAI',
-    ]
-    await Promise.allSettled(assets.map(a => this.getUSDPrice(a)))
+  /** Refreshes every tracked asset in one go; concurrent callers share the same run */
+  private refreshAll(): Promise<void> {
+    if (this.inflight) return this.inflight
+    this.inflight = this.doRefresh().finally(() => { this.inflight = null })
+    return this.inflight
+  }
+
+  private async doRefresh(): Promise<void> {
+    let got: Record<string, number> = {}
+
+    try {
+      got = await this.fetchBatchFromCoinGecko(TRACKED_ASSETS)
+    } catch (err: any) {
+      logger.warn(`[PriceOracle] CoinGecko failed: ${err?.response?.status ?? ''} ${err?.message}`)
+    }
+
+    const missing = TRACKED_ASSETS.filter(a => !got[a])
+    if (missing.length > 0) {
+      try {
+        got = { ...(await this.fetchBatchFromPyth(missing)), ...got }
+      } catch (err: any) {
+        logger.warn(`[PriceOracle] Pyth failed: ${err?.response?.status ?? ''} ${err?.message}`)
+      }
+    }
+
+    await this.store(got)
+
+    const stillMissing = TRACKED_ASSETS.filter(a => !got[a])
+    if (stillMissing.length > 0) {
+      logger.warn(`[PriceOracle] No fresh price for: ${stillMissing.join(', ')} (serving last known where available)`)
+    }
   }
 
   /** Returns a snapshot of all cached prices */
   async getAllPrices(): Promise<Record<string, PriceData>> {
-    const assets = [
-      'ETH', 'BTC', 'SUI', 'APT', 'USDC', 'USDT',
-      'SOL', 'BNB', 'MATIC', 'AVAX', 'LINK', 'UNI',
-      'AAVE', 'ARB', 'DOGE', 'ADA', 'DOT', 'OP', 'DAI',
-    ]
     const result: Record<string, PriceData> = {}
 
-    for (const asset of assets) {
-      try {
-        const price = await this.getUSDPrice(asset)
-        result[asset] = { price, timestamp: Date.now(), source: 'cache' }
-      } catch {
-        // skip
+    for (const asset of TRACKED_ASSETS) {
+      const price = await this.readPrice(asset)
+      if (price !== null) result[asset] = { price, timestamp: Date.now(), source: 'cache' }
+    }
+
+    // Cold start / everything expired: fetch once, then re-read
+    if (Object.keys(result).length < TRACKED_ASSETS.length) {
+      await this.refreshAll()
+      for (const asset of TRACKED_ASSETS) {
+        if (result[asset]) continue
+        const price = await this.readPrice(asset)
+        if (price !== null) result[asset] = { price, timestamp: Date.now(), source: 'cache' }
       }
     }
     return result

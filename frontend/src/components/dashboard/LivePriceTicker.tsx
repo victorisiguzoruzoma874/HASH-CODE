@@ -72,11 +72,14 @@ export const LivePriceTicker: React.FC = () => {
   const fetchPrices = async () => {
     try {
       const res = await priceApi.getAll()
-      const list = Object.entries(res.prices).map(([symbol, data]) => ({
-        symbol,
-        usd: data.price,
-      }))
-      setCoins(list)
+      // Merge into the previous list so a partial response never drops a coin
+      setCoins(prev => {
+        const next = new Map(prev.map(c => [c.symbol, c]))
+        for (const [symbol, data] of Object.entries(res.prices)) {
+          next.set(symbol, { symbol, usd: data.price })
+        }
+        return Array.from(next.values())
+      })
 
       // Get NGN rate
       try {

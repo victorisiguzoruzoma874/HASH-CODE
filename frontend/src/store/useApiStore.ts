@@ -118,7 +118,8 @@ export const useApiStore = create<ApiState>((set) => ({
       for (const [asset, data] of Object.entries(prices)) {
         flat[asset] = data.price
       }
-      set({ prices: flat, pricesLoading: false })
+      // Merge so a partial response never drops a price
+      set(state => ({ prices: { ...state.prices, ...flat }, pricesLoading: false }))
     } catch {
       set({ pricesLoading: false })
     }
