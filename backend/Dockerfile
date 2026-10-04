@@ -1,7 +1,8 @@
-FROM node:20-bullseye-slim
+FROM node:20-bookworm-slim
 
-# Install OpenSSL 1.1.x (available on Debian 11 bullseye)
-RUN apt-get update && apt-get install -y openssl libssl-dev && rm -rf /var/lib/apt/lists/*
+# Debian 11 (bullseye) is EOL and its security repo 404s; bookworm ships OpenSSL 3,
+# which matches the debian-openssl-3.0.x binaryTarget in prisma/schema.prisma
+RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
