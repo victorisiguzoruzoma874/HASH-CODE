@@ -32,14 +32,39 @@ app.use(cors({
 }))
 
 // ── Rate limiting ────────────────────────────────────────────
+const windowMs = parseInt(process.env.RATE_LIMIT_WINDOW_MS ?? '900000')
+
+// General limit. Price/health are polled by the frontend every 30s from several
+// components, so they get their own bucket and must not eat the shared quota.
 const limiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS ?? '900000'),
-  max:      parseInt(process.env.RATE_LIMIT_MAX ?? '100'),
+  windowMs,
+  max:      parseInt(process.env.RATE_LIMIT_MAX ?? '300'),
+  message:  { error: 'Too many requests, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders:   false,
+  skip: (req) => req.path.startsWith(`${API}/price`) || req.path.startsWith(`${API}/health`),
+})
+app.use(limiter)
+
+const pollingLimiter = rateLimit({
+  windowMs: 60_000,
+  max:      120,
   message:  { error: 'Too many requests, please try again later.' },
   standardHeaders: true,
   legacyHeaders:   false,
 })
-app.use(limiter)
+app.use(`${API}/price`, pollingLimiter)
+
+// Strict limit on credential endpoints; successful logins don't count against it
+const authLimiter = rateLimit({
+  windowMs,
+  max:      20,
+  message:  { error: 'Too many login attempts, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders:   false,
+  skipSuccessfulRequests: true,
+})
+app.use(`${API}/auth`, authLimiter)
 
 // ── Body parsing ─────────────────────────────────────────────
 // Raw body for webhook signature verification
