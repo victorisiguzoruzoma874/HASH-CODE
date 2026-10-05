@@ -1,6 +1,6 @@
 import React from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
-import { useCurrentAccount, useDisconnectWallet } from '@mysten/dapp-kit'
+import { ConnectModal, useCurrentAccount, useDisconnectWallet } from '@mysten/dapp-kit'
 import { useStore } from '../../store/useStore'
 import { useApiStore } from '../../store/useApiStore'
 
@@ -45,11 +45,20 @@ export const Sidebar: React.FC = () => {
 
         <div className="dash-side-foot">
           <div className="dash-wallet">
-            <div className="addr">{account ? `${account.address.slice(0, 8)}…${account.address.slice(-6)}` : '—'}</div>
+            <div className="addr">{account ? `${account.address.slice(0, 8)}…${account.address.slice(-6)}` : 'No wallet connected'}</div>
             <div className={`state${account ? ' on' : ''}`}>
-              {account ? 'Sui wallet connected' : 'No wallet connected'}
+              {account ? 'Sui wallet connected' : 'Connect a Sui wallet to use it here.'}
             </div>
           </div>
+          {account ? (
+            <button className="lp-btn small" style={{ width: '100%' }} onClick={() => disconnect()}>
+              Disconnect wallet
+            </button>
+          ) : (
+            <ConnectModal
+              trigger={<button className="lp-btn solid small" style={{ width: '100%' }}>Connect wallet</button>}
+            />
+          )}
           <button
             className="lp-btn small" style={{ width: '100%' }}
             onClick={() => { apiLogout(); if (account) disconnect(); navigate('/login') }}

@@ -8,7 +8,6 @@ import { authRouter }     from './routes/auth'
 import { swapRouter }     from './routes/swap'
 import { escrowRouter }   from './routes/escrow'
 import { payoutRouter }   from './routes/payout'
-import { airtimeRouter }  from './routes/airtime'
 import { priceRouter }    from './routes/price'
 import { kycRouter }      from './routes/kyc'
 import { webhookRouter }  from './routes/webhook'
@@ -83,7 +82,11 @@ app.use(`${API}/auth`,    authRouter)
 app.use(`${API}/swap`,    swapRouter)
 app.use(`${API}/escrow`,  escrowRouter)
 app.use(`${API}/payout`,  payoutRouter)
-app.use(`${API}/airtime`, airtimeRouter)
+// Airtime is disabled: the top-up route called Africa's Talking without charging
+// the user. Re-enable only after it debits the wallet before sending airtime.
+app.use(`${API}/airtime`, (_req, res) => {
+  res.status(503).json({ error: 'Airtime top-up is not available.', code: 'AIRTIME_DISABLED' })
+})
 app.use(`${API}/price`,   priceRouter)
 app.use(`${API}/kyc`,     kycRouter)
 app.use(`${API}/wallet`,  walletRouter)
