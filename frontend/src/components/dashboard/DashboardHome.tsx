@@ -15,6 +15,7 @@ const actions: { id: Exclude<ModalType, null>; label: string }[] = [
 ]
 
 const LIVE_ASSETS = [
+  { symbol: 'XLM', name: 'Stellar' },
   { symbol: 'SUI',  name: 'Sui' },
   { symbol: 'ETH',  name: 'Ethereum' },
   { symbol: 'USDC', name: 'USD Coin' },

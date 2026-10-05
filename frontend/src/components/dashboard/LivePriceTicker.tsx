@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { priceApi } from '../../lib/api'
 
 const NAMES: Record<string, string> = {
-  BTC: 'Bitcoin', ETH: 'Ethereum', SUI: 'Sui', APT: 'Aptos', USDC: 'USD Coin', USDT: 'Tether',
+  XLM: 'Stellar', BTC: 'Bitcoin', ETH: 'Ethereum', SUI: 'Sui', APT: 'Aptos', USDC: 'USD Coin', USDT: 'Tether',
 }
 
 function fmt(n: number): string {

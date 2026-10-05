@@ -94,3 +94,13 @@ Public endpoints work without new secrets. Configure the `WALLET_*` endpoints
 in `backend/.env.example` for production provider quotas. The EVM service checks the
 RPC chain ID before reading balances, preventing a misconfigured endpoint from
 returning another network's holdings. No database migration is needed for reads.
+
+## Stellar token pricing
+
+XLM (Stellar's native lumen) appears in landing and dashboard live prices and
+swap estimate selectors. The price API tracks XLM/USD using CoinGecko's
+`stellar` ID and the Pyth `Crypto.XLM/USD` feed as fallback; XLM/NGN uses the
+existing USD/NGN FX provider. The public Pyth XLM endpoint returned HTTP 401
+during verification; fallback availability depends on provider access. CoinGecko
+returned a live XLM/USD price successfully. Connected Stellar wallets already show XLM and
+issued assets. This does not enable Stellar transaction signing or cash-out.

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { useApiStore } from '../store/useApiStore'
 import { priceApi } from '../lib/api'
 
-// ── 20 tokens ────────────────────────────────────────────────
+// ── 21 tokens ────────────────────────────────────────────────
 const ALL_TOKENS = [
   { symbol: 'ETH',   name: 'Ethereum',        category: 'Layer 1' },
   { symbol: 'USDC',  name: 'USD Coin',         category: 'Stablecoin' },
@@ -23,6 +23,7 @@ const ALL_TOKENS = [
   { symbol: 'OP',    name: 'Optimism',         category: 'Layer 2' },
   { symbol: 'DOGE',  name: 'Dogecoin',         category: 'Meme' },
   { symbol: 'ADA',   name: 'Cardano',          category: 'Layer 1' },
+  { symbol: 'XLM',   name: 'Stellar',          category: 'Layer 1' },
   { symbol: 'DOT',   name: 'Polkadot',         category: 'Layer 1' },
 ]
 

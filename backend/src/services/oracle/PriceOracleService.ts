@@ -11,6 +11,7 @@ interface PriceData {
 const PRICE_CACHE_TTL = 30  // 30 seconds
 
 const PYTH_FEEDS: Record<string, string> = {
+  'XLM/USD':   '0xb7a8eba68a997cd0210c2e1e4ee811ad2d174b3611c22d9ebf16f4cb7e9ba850',
   'ETH/USD':   '0xff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace',
   'BTC/USD':   '0xe62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43',
   'APT/USD':   '0x03ae4db29ed4ae33d323568895aa00337e658e348b37509f5372ae51f0af00d5',
@@ -30,7 +31,7 @@ const PYTH_FEEDS: Record<string, string> = {
 
 // CoinGecko IDs for fallback
 const COINGECKO_IDS: Record<string, string> = {
-  ETH: 'ethereum', BTC: 'bitcoin', APT: 'aptos',
+  ETH: 'ethereum', BTC: 'bitcoin', APT: 'aptos', XLM: 'stellar',
   USDC: 'usd-coin', USDT: 'tether', SUI: 'sui',
   SOL: 'solana', BNB: 'binancecoin', MATIC: 'matic-network',
   AVAX: 'avalanche-2', LINK: 'chainlink', UNI: 'uniswap',
@@ -48,7 +49,7 @@ const COINGECKO_IDS: Record<string, string> = {
  * Also provides NGN conversion rates via a dedicated FX endpoint.
  */
 const TRACKED_ASSETS = [
-  'ETH', 'BTC', 'SUI', 'APT', 'USDC', 'USDT',
+  'ETH', 'BTC', 'SUI', 'APT', 'XLM', 'USDC', 'USDT',
   'SOL', 'BNB', 'MATIC', 'AVAX', 'LINK', 'UNI',
   'AAVE', 'ARB', 'DOGE', 'ADA', 'DOT', 'OP', 'DAI',
 ]

@@ -16,7 +16,7 @@ const CURRENCIES = [
 const FEATURES = [
   { title: 'Naira wallet',        desc: 'Get a HashPay account number and receive deposits by bank transfer.' },
   { title: 'Free instant transfers', desc: 'Send naira to any HashPay account in seconds, at no cost.' },
-  { title: 'Live crypto prices',  desc: 'Track prices for BTC, ETH, SUI, APT and stablecoins in dollars and naira.' },
+  { title: 'Live crypto prices',  desc: 'Track prices for BTC, ETH, XLM, SUI, APT and stablecoins in dollars and naira.' },
   { title: 'Cash out to your bank', desc: 'Get a signed quote for converting crypto to naira and verify your bank account.' },
   { title: 'Signed quotes',       desc: 'Every conversion quote is signed by HashPay so the rate you see is the rate you get.' },
 ]
@@ -24,6 +24,7 @@ const FEATURES = [
 const SECURITY = ['AES-256 encryption for sensitive data', 'Signed conversion quotes (secp256k1)']
 
 const COINS: { symbol: string; name: string }[] = [
+  { symbol: 'XLM', name: 'Stellar' },
   { symbol: 'BTC',  name: 'Bitcoin'  },
   { symbol: 'ETH',  name: 'Ethereum' },
   { symbol: 'SUI',  name: 'Sui'      },

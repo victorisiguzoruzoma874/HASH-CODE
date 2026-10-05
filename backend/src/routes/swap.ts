@@ -16,8 +16,8 @@ swapRouter.post(
   '/quote',
   requireAuth,
   [
-    body('assetIn').isIn(['ETH', 'USDC', 'USDT', 'APT', 'BTC', 'WETH']),
-    body('assetOut').isIn(['ETH', 'USDC', 'USDT', 'APT', 'BTC', 'WETH']),
+    body('assetIn').isIn(['ETH', 'USDC', 'USDT', 'APT', 'BTC', 'WETH', 'XLM']),
+    body('assetOut').isIn(['ETH', 'USDC', 'USDT', 'APT', 'BTC', 'WETH', 'XLM']),
     body('amountIn').isNumeric(),
     body('slippageBps').optional().isInt({ min: 1, max: 500 }).default(50),
   ],
@@ -65,6 +65,10 @@ swapRouter.post(
   async (req: AuthRequest, res: any, next: any) => {
     try {
       const { senderAddress, amountIn, minOut, assetIn, assetOut } = req.body
+
+      if (assetIn === 'XLM' || assetOut === 'XLM') {
+        throw new AppError(400, 'XLM is available for price estimates only. Stellar swaps are not available yet.', 'STELLAR_SWAP_UNAVAILABLE')
+      }
 
       // Build the Move transaction payload
       const payload = {

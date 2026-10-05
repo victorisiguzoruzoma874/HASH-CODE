@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { priceApi } from '../../lib/api'
 
 const TOKENS = [
+  { symbol: 'XLM', name: 'Stellar' },
   { symbol: 'ETH',  name: 'Ethereum' },
   { symbol: 'SUI',  name: 'Sui' },
   { symbol: 'USDC', name: 'USD Coin' },
