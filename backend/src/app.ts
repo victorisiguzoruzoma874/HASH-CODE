@@ -42,7 +42,7 @@ const limiter = rateLimit({
   message:  { error: 'Too many requests, please try again later.' },
   standardHeaders: true,
   legacyHeaders:   false,
-  skip: (req) => req.path.startsWith(`${API}/price`) || req.path.startsWith(`${API}/health`),
+  skip: (req) => req.path.startsWith(`${API}/price`) || req.path.startsWith(`${API}/health`) || /^\/auth\/wallets\/[^/]+\/balance$/.test(req.path.slice(API.length)),
 })
 app.use(limiter)
 
@@ -54,6 +54,7 @@ const pollingLimiter = rateLimit({
   legacyHeaders:   false,
 })
 app.use(`${API}/price`, pollingLimiter)
+app.use(`${API}/auth/wallets/:id/balance`, pollingLimiter)
 
 // Strict limit on credential endpoints; successful logins don't count against it
 const authLimiter = rateLimit({
@@ -63,6 +64,7 @@ const authLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders:   false,
   skipSuccessfulRequests: true,
+  skip: req => /^\/wallets\/[^/]+\/balance$/.test(req.path),
 })
 app.use(`${API}/auth`, authLimiter)
 

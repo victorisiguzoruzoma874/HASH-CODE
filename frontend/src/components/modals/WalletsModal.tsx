@@ -4,6 +4,7 @@ import { Modal } from '../ui/Modal'
 import { authApi, type WalletProvider, type LinkedWallet } from '../../lib/api'
 import { connectExternalWallet, detectWallets, walletOptions } from '../../lib/walletConnectors'
 import { useApiStore } from '../../store/useApiStore'
+import { WalletBalanceDetails } from '../dashboard/ConnectedWalletBalances'
 
 export const WalletsModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
   const wallets = useWallets()
@@ -117,7 +118,7 @@ export const WalletsModal: React.FC<{ isOpen: boolean; onClose: () => void }> = 
           {loading ? <p role="status">Loading wallets…</p> : links.length === 0 ? <p className="dash-grey">No verified wallet links yet.</p> : (
             <ul className="dash-linked-wallets">
               {links.map(wallet => <li key={wallet.id}>
-                <div><b>{walletOptions.find(o => o.id === wallet.provider)?.name ?? 'Sui wallet'}</b> <span className="dash-meta">{wallet.chain}</span><div className="dash-wallet-address">{wallet.address}</div></div>
+                <div><b>{walletOptions.find(o => o.id === wallet.provider)?.name ?? 'Sui wallet'}</b> <span className="dash-meta">{wallet.chain}</span><div className="dash-wallet-address">{wallet.address}</div><WalletBalanceDetails wallet={wallet} /></div>
                 <button className="lp-btn small" disabled={!!busy} onClick={() => unlink(wallet)} aria-label={`Remove ${wallet.provider} wallet ${wallet.address}`}>Remove</button>
               </li>)}
             </ul>

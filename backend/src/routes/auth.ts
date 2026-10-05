@@ -8,6 +8,7 @@ import { requireAuth, type AuthRequest } from '../middleware/auth'
 import { AppError } from '../middleware/errorHandler'
 import { WalletLinkService } from '../services/wallets/WalletLinkService'
 import { walletProviders } from '../services/wallets/WalletProof'
+import { WalletBalanceService, balanceNetworks } from '../services/wallets/WalletBalanceService'
 
 async function generateUniqueAccountNumber(): Promise<string> {
   for (let attempt = 0; attempt < 10; attempt++) {
@@ -20,6 +21,7 @@ async function generateUniqueAccountNumber(): Promise<string> {
 
 export const authRouter = Router()
 const walletLinks = new WalletLinkService()
+const walletBalances = new WalletBalanceService()
 
 function signToken(payload: object): string {
   const opts: SignOptions = { expiresIn: (process.env.JWT_EXPIRES_IN ?? '7d') as SignOptions['expiresIn'] }
@@ -121,6 +123,18 @@ authRouter.post('/wallet-challenge', requireAuth, [
 authRouter.get('/wallets', requireAuth, async (req: AuthRequest, res: any, next: any) => {
   try { res.json({ wallets: await walletLinks.list(req.user!.id) }) }
   catch (err) { next(err) }
+})
+
+authRouter.get('/wallet-networks', requireAuth, (_req, res) => { res.json({ networks: balanceNetworks }) })
+
+authRouter.get('/wallets/:id/balance', requireAuth, async (req: AuthRequest, res: any, next: any) => {
+  try {
+    if (req.query.network !== undefined && typeof req.query.network !== 'string') {
+      throw new AppError(400, 'Select a supported wallet network.', 'INVALID_WALLET_NETWORK')
+    }
+    res.setHeader('Cache-Control', 'no-store')
+    res.json(await walletBalances.get(req.user!.id, req.params.id, req.query.network as string | undefined))
+  } catch (err) { next(err) }
 })
 
 authRouter.delete('/wallets/:id', requireAuth, async (req: AuthRequest, res: any, next: any) => {

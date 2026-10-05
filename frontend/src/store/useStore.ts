@@ -18,9 +18,13 @@ interface AppStore {
   openModal: (modal: ModalType) => void
   closeModal: () => void
   toggleSidebar: () => void
+  walletNetworks: Record<string, string>
+  selectWalletNetwork: (walletKey: string, network: string) => void
 }
 
 export const useStore = create<AppStore>((set) => ({
+  walletNetworks: {},
+  selectWalletNetwork: (walletKey, network) => set(s => ({ walletNetworks: { ...s.walletNetworks, [walletKey]: network } })),
   ui: {
     activeModal: null,
     sidebarOpen: true,

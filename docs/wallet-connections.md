@@ -64,3 +64,33 @@ is not established by this message flow.
 Before calling the integration verified on a live deployment, link and remove
 each wallet using its actual extension, reject one signature request, reload the
 dashboard to check persistence, and check the mobile wallet browsers in use.
+
+## Wallet balances
+
+The dashboard and Manage wallets show read-only balances for verified links.
+`GET /auth/wallets/:id/balance?network=...` first checks that the caller owns the
+link, then reads the selected network. Balances refresh every 30 seconds while
+visible and have a 15-second server cache. A failed refresh retains the last
+retrieved balance with a warning and timestamp. Provider failures are not zeros.
+Token quantities remain decimal strings to preserve precision.
+
+Mainnet is selected initially. Each wallet has an explicit network selector:
+
+| Wallet chain | Networks | Balances shown |
+| --- | --- | --- |
+| EVM | Ethereum, Base, Arbitrum, Ethereum Sepolia | Native ETH, Circle USDC, and up to 100 indexed ERC-20 holdings |
+| Stellar | Mainnet, testnet | XLM and issued assets; issuer IDs distinguish assets with the same code |
+| Solana | Mainnet, devnet | SOL and SPL/Token-2022 account balances, aggregated by mint |
+| Sui | Mainnet, testnet | SUI and coin balances via GraphQL, up to 50 coin types plus native SUI |
+
+These are on-chain quantities, not a fiat portfolio total or spendable HashPay
+naira balance. EVM token discovery uses Blockscout and can lag behind chain state. Staked
+assets, DeFi positions and collectible valuations are not included. Unknown
+Solana tokens use their mint IDs, and missing Sui decimals produce clearly
+labelled raw units rather than guessed amounts. Network labels and testnet
+notices distinguish test assets from actual funds.
+
+Public endpoints work without new secrets. Configure the `WALLET_*` endpoints
+in `backend/.env.example` for production provider quotas. The EVM service checks the
+RPC chain ID before reading balances, preventing a misconfigured endpoint from
+returning another network's holdings. No database migration is needed for reads.

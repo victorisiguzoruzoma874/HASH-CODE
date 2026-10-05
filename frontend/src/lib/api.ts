@@ -19,6 +19,23 @@ export interface LinkedWallet {
   createdAt: string
 }
 
+export interface WalletAssetBalance {
+  id: string
+  symbol: string
+  amount: string
+  decimals: number | null
+}
+export interface WalletBalances {
+  walletId: string
+  network: string
+  networkLabel: string
+  assets: WalletAssetBalance[]
+  checkedAt: string
+  warnings: string[]
+  coverage: string
+}
+export type WalletNetworks = Record<LinkedWallet['chain'], { id: string; label: string }[]>
+
 export interface User {
   id:                string
   email:             string
@@ -168,6 +185,8 @@ export const authApi = {
   },
 
   wallets: () => get<{ wallets: LinkedWallet[] }>('/auth/wallets'),
+  walletNetworks: () => get<{ networks: WalletNetworks }>('/auth/wallet-networks'),
+  walletBalances: (id: string, network: string) => get<WalletBalances>(`/auth/wallets/${encodeURIComponent(id)}/balance?network=${encodeURIComponent(network)}`),
 
   unlinkWallet: (id: string) => {
     return request<{ message: string }>(`/auth/wallets/${encodeURIComponent(id)}`, { method: 'DELETE' })
