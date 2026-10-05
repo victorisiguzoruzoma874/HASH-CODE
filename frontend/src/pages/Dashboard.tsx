@@ -53,7 +53,7 @@ export const Dashboard: React.FC = () => {
         <TopBar />
 
         <main className="dash-scroll">
-          {isHome ? <DashboardHome /> : <div className="dash-legacy"><Outlet /></div>}
+          {isHome ? <DashboardHome /> : <Outlet />}
         </main>
       </div>
 
