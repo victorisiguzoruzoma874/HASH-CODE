@@ -395,3 +395,16 @@ export function clearToken(): void              { localStorage.removeItem('hp_to
 export function getToken(): string | null       { return localStorage.getItem('hp_token') }
 
 export { ApiError }
+
+export interface StellarSwapQuote {
+  quoteId: string; walletId: string; address: string; provider: string; network: 'mainnet'
+  assetIn: string; assetOut: string; amountIn: string; amountOut: string; minOut: string
+  feeXlm: string; reserveXlm: string; createsTrustline: boolean; usdcIssuer: string
+  expiresAt: string; transactionXdr: string; transactionHash: string; networkPassphrase: string
+}
+export interface StellarSwapResult { status: 'confirmed' | 'pending' | 'failed' | 'expired'; transactionHash: string; network: 'mainnet' }
+export const stellarSwapApi = {
+  quote: (body: { walletId: string; assetIn: string; assetOut: string; amountIn: string }) => post<StellarSwapQuote>('/stellar-swap/quote', body),
+  submit: (quoteId: string, signedXdr: string) => post<StellarSwapResult>('/stellar-swap/submit', { quoteId, signedXdr }),
+  status: (quoteId: string) => get<StellarSwapResult>(`/stellar-swap/${quoteId}/status`),
+}

@@ -103,3 +103,25 @@ export async function connectExternalWallet(provider: Exclude<WalletProvider, 's
     }
   }
 }
+
+export async function signStellarSwap(provider: string, address: string, transactionXdr: string, networkPassphrase: string): Promise<string> {
+  if (provider === 'freighter') {
+    const access = await freighter.requestAccess()
+    if (access.error) throw new Error(access.error.message)
+    if (access.address !== address) throw new Error('Select the linked Stellar account in Freighter and try again.')
+    const network = await freighter.getNetwork()
+    if (network.error) throw new Error(network.error.message)
+    if (network.networkPassphrase !== networkPassphrase) throw new Error('Switch Freighter to Stellar mainnet before signing this swap.')
+    const result = await freighter.signTransaction(transactionXdr, { address, networkPassphrase })
+    if (result.error) throw new Error(result.error.message)
+    if (!result.signedTxXdr || result.signerAddress !== address) throw new Error('Signing was cancelled or the wallet account changed.')
+    return result.signedTxXdr
+  }
+  if (provider === 'lobstr') {
+    if (await lobstr.getPublicKey() !== address) throw new Error('Select the linked Stellar account in LOBSTR and try again.')
+    const signed = await lobstr.signTransaction(transactionXdr)
+    if (!signed || await lobstr.getPublicKey() !== address) throw new Error('Signing was cancelled or the wallet account changed.')
+    return signed
+  }
+  throw new Error('Use Freighter or LOBSTR to sign Stellar swaps.')
+}

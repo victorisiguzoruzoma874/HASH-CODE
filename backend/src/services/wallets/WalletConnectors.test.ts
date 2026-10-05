@@ -5,13 +5,13 @@ const { browser, freighterMock, lobstrMock } = vi.hoisted(() => {
   vi.stubGlobal('window', browser)
   return {
     browser,
-    freighterMock: { isConnected: vi.fn(), requestAccess: vi.fn(), signMessage: vi.fn() },
-    lobstrMock: { isConnected: vi.fn(), getPublicKey: vi.fn(), signMessage: vi.fn() },
+    freighterMock: { isConnected: vi.fn(), requestAccess: vi.fn(), signMessage: vi.fn(), getNetwork: vi.fn(), signTransaction: vi.fn() },
+    lobstrMock: { isConnected: vi.fn(), getPublicKey: vi.fn(), signMessage: vi.fn(), signTransaction: vi.fn() },
   }
 })
 vi.mock('@stellar/freighter-api', () => freighterMock)
 vi.mock('@lobstrco/signer-extension-api', () => lobstrMock)
-import { connectExternalWallet, detectWallets } from '../../../../frontend/src/lib/walletConnectors'
+import { connectExternalWallet, detectWallets, signStellarSwap } from '../../../../frontend/src/lib/walletConnectors'
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -104,5 +104,33 @@ describe('browser wallet connectors', () => {
     browser.dispatchEvent(new CustomEvent('eip6963:announceProvider', { detail: { info: { rdns: 'io.metamask' }, provider: { request } } }))
     expect((await connectExternalWallet('metamask')).address).toBe('0xmetamask')
     expect(browser.ethereum.request).not.toHaveBeenCalled()
+  })
+})
+
+
+describe('Stellar transaction approval', () => {
+  it('checks the selected account and network before Freighter signs', async () => {
+    freighterMock.requestAccess.mockResolvedValue({ address: 'GOWNER' })
+    freighterMock.getNetwork.mockResolvedValue({ networkPassphrase: 'mainnet' })
+    freighterMock.signTransaction.mockResolvedValue({ signedTxXdr: 'signed-xdr', signerAddress: 'GOWNER' })
+    expect(await signStellarSwap('freighter', 'GOWNER', 'unsigned-xdr', 'mainnet')).toBe('signed-xdr')
+    expect(freighterMock.signTransaction).toHaveBeenCalledWith('unsigned-xdr', { address: 'GOWNER', networkPassphrase: 'mainnet' })
+  })
+  it('refuses the wrong account or network without signing', async () => {
+    freighterMock.requestAccess.mockResolvedValue({ address: 'GOTHER' })
+    await expect(signStellarSwap('freighter', 'GOWNER', 'xdr', 'mainnet')).rejects.toThrow('linked Stellar account')
+    freighterMock.requestAccess.mockResolvedValue({ address: 'GOWNER' })
+    freighterMock.getNetwork.mockResolvedValue({ networkPassphrase: 'testnet' })
+    await expect(signStellarSwap('freighter', 'GOWNER', 'xdr', 'mainnet')).rejects.toThrow('mainnet')
+    expect(freighterMock.signTransaction).not.toHaveBeenCalled()
+  })
+  it('surfaces cancellation and checks the LOBSTR account after signing', async () => {
+    lobstrMock.getPublicKey.mockResolvedValueOnce('GOWNER').mockResolvedValueOnce('GOTHER')
+    lobstrMock.signTransaction.mockResolvedValue('signed-xdr')
+    await expect(signStellarSwap('lobstr', 'GOWNER', 'xdr', 'mainnet')).rejects.toThrow('account changed')
+    freighterMock.requestAccess.mockResolvedValue({ address: 'GOWNER' })
+    freighterMock.getNetwork.mockResolvedValue({ networkPassphrase: 'mainnet' })
+    freighterMock.signTransaction.mockResolvedValue({ error: { message: 'User rejected' } })
+    await expect(signStellarSwap('freighter', 'GOWNER', 'xdr', 'mainnet')).rejects.toThrow('User rejected')
   })
 })

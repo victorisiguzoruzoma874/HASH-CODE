@@ -103,4 +103,46 @@ swap estimate selectors. The price API tracks XLM/USD using CoinGecko's
 existing USD/NGN FX provider. The public Pyth XLM endpoint returned HTTP 401
 during verification; fallback availability depends on provider access. CoinGecko
 returned a live XLM/USD price successfully. Connected Stellar wallets already show XLM and
-issued assets. This does not enable Stellar transaction signing or cash-out.
+issued assets. Stellar transaction signing is supported for XLM/Circle USDC swaps as described below; cash-out is not enabled.
+
+## Executable Stellar swaps
+
+The swap page supports XLM ? Circle USDC on **Stellar mainnet** through a
+verified Freighter or LOBSTR link. Other pairs remain price estimates.
+`POST /stellar-swap/quote` discovers strict-send paths through Horizon rather
+than treating USD price ratios as executable liquidity. The resulting XDR pays
+the proceeds back to the same account, enforces a 0.5% minimum receive amount,
+and expires after 90 seconds. The quote shows fees, the Circle issuer and any
+new trustline reserve. No HashPay trading fee is added.
+
+The service checks account ownership, network passphrase, available balances,
+selling liabilities, USDC authorization/limit, account reserves and basic signer
+thresholds. Missing receiving USDC trustlines are created in the same atomic
+transaction and disclosed before approval. Additional-signature accounts are
+unsupported. Both directions require sufficient XLM for reserves and fees.
+
+`POST /stellar-swap/submit` accepts only the matching unsigned transaction body
+with a valid signature from the linked account, rejects modified operations,
+and broadcasts the signed XDR to Horizon. Private keys stay in the wallet.
+The transaction hash makes retries idempotent. Unknown submission outcomes are
+reconciled with `GET /stellar-swap/:quoteId/status`; they are not success messages
+or invitations to submit another swap. An expired transaction is cleared only
+when Horizon has ingested a ledger beyond its time bound and still reports no
+transaction for that hash. Submitted quote records remain for 24 hours; quotes
+not submitted remain for 10 minutes. Redis must be available to create or submit
+quotes. The browser saves a pending hash/quote ID per user and resumes checks
+after reload, including when a different token pair is initially displayed.
+
+The fixed mainnet issuer is
+`GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN`.
+`WALLET_STELLAR_HORIZON_URL` can point at a dedicated mainnet Horizon service;
+a testnet or mismatched provider is refused. These are same-network swaps,
+not a bridge to Ethereum, Base, Solana or Sui USDC. Actual execution depends
+on liquidity at inclusion time; slippage protection may cause a failed ledger
+transaction, which can still charge its network fee.
+
+Verification includes signed XDR service tests and browser fixtures for
+approval rejection, quote review, pending confirmation and reload recovery on
+desktop/mobile. A live mainnet read found a route for 6 XLM to Circle USDC.
+No mainnet funds were moved during verification. Actual Freighter/LOBSTR
+extension approval and a deployed end-to-end swap still need to be verified.

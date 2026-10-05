@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useApiStore } from '../store/useApiStore'
 import { priceApi } from '../lib/api'
+import { StellarSwapExecution } from '../components/dashboard/StellarSwapExecution'
 
 // ── 21 tokens ────────────────────────────────────────────────
 const ALL_TOKENS = [
@@ -37,8 +38,8 @@ const fmtPrice = (n: number) =>
 
 // ── Token selector dropdown ───────────────────────────────────
 const TokenDropdown: React.FC<{
-  selected: Token; onSelect: (t: Token) => void; exclude?: string; label: string; prices: Record<string, number>
-}> = ({ selected, onSelect, exclude, label, prices }) => {
+  selected: Token; onSelect: (t: Token) => void; exclude?: string; label: string; prices: Record<string, number>; disabled?: boolean
+}> = ({ selected, onSelect, exclude, label, prices, disabled }) => {
   const [open, setOpen]         = useState(false)
   const [search, setSearch]     = useState('')
   const [category, setCategory] = useState('All')
@@ -64,7 +65,7 @@ const TokenDropdown: React.FC<{
 
   return (
     <div ref={ref} className="dash-token">
-      <button type="button" className="dash-tokenbtn" onClick={() => setOpen(!open)} aria-haspopup="listbox" aria-expanded={open} aria-label={label}>
+      <button type="button" className="dash-tokenbtn" disabled={disabled} onClick={() => setOpen(!open)} aria-haspopup="listbox" aria-expanded={open} aria-label={label}>
         {selected.symbol} {open ? '▴' : '▾'}
       </button>
 
@@ -83,7 +84,7 @@ const TokenDropdown: React.FC<{
             {filtered.length === 0 ? (
               <p className="dash-empty">No tokens found.</p>
             ) : filtered.map(t => (
-              <button key={t.symbol} type="button" role="option" aria-selected={selected.symbol === t.symbol}
+              <button key={t.symbol} type="button" role="option" disabled={disabled} aria-selected={selected.symbol === t.symbol}
                 onClick={() => { onSelect(t); setOpen(false); setSearch(''); setCategory('All') }}>
                 <span><b>{t.symbol}</b> <span className="dash-meta">{t.name}</span></span>
                 <span className="p">{prices[t.symbol] ? `$${fmtPrice(prices[t.symbol])}` : ''}</span>
@@ -101,6 +102,8 @@ export const SwapPage: React.FC = () => {
   const [sellToken,  setSellToken]  = useState(ALL_TOKENS[0])
   const [buyToken,   setBuyToken]   = useState(ALL_TOKENS[1])
   const [sellAmount, setSellAmount] = useState('')
+  const [stellarBusy, setStellarBusy] = useState(false)
+  const stellarPair = (sellToken.symbol === 'XLM' && buyToken.symbol === 'USDC') || (sellToken.symbol === 'USDC' && buyToken.symbol === 'XLM')
   const [listSearch, setListSearch] = useState('')
   const [listCategory, setListCategory] = useState('All')
   const [livePrices, setLivePrices] = useState<Record<string, number>>({})
@@ -161,7 +164,7 @@ export const SwapPage: React.FC = () => {
         <section className="dash-card" aria-label="Swap">
           <header>
             <h2>Quick swap</h2>
-            <span>Quote from live prices</span>
+            <span>Estimate from live prices</span>
           </header>
           <div className="dash-pad" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div className="dash-box">
@@ -170,8 +173,8 @@ export const SwapPage: React.FC = () => {
               </div>
               <div className="line">
                 <input id="sp-sell" className="dash-amount" style={{ fontSize: 26 }} type="number" inputMode="decimal" min="0"
-                  value={sellAmount} onChange={e => setSellAmount(e.target.value)} placeholder="0.00" />
-                <TokenDropdown selected={sellToken} onSelect={setSellToken} exclude={buyToken.symbol} label="Token to pay with" prices={livePrices} />
+                  disabled={stellarBusy} value={sellAmount} onChange={e => setSellAmount(e.target.value)} placeholder="0.00" />
+                <TokenDropdown selected={sellToken} onSelect={setSellToken} exclude={buyToken.symbol} label="Token to pay with" prices={livePrices} disabled={stellarBusy} />
               </div>
               {livePrices[sellToken.symbol] && sellAmount && (
                 <div className="dash-meta dash-mono" style={{ marginTop: 8 }}>
@@ -180,21 +183,21 @@ export const SwapPage: React.FC = () => {
               )}
             </div>
 
-            <button type="button" className="lp-btn small dash-flip" onClick={handleFlip} aria-label="Swap the two tokens">Flip</button>
+            <button type="button" className="lp-btn small dash-flip" disabled={stellarBusy} onClick={handleFlip} aria-label="Swap the two tokens">Flip</button>
 
             <div className="dash-box">
               <div className="top">
-                <span>You receive</span>
+                <span>{stellarPair ? 'Estimated receive' : 'You receive'}</span>
               </div>
               <div className="line">
                 <div className="dash-amount dash-green" style={{ fontSize: 26 }} aria-live="polite">
                   {swapLoading ? 'Loading…' : (buyAmount || '0.00')}
                 </div>
-                <TokenDropdown selected={buyToken} onSelect={setBuyToken} exclude={sellToken.symbol} label="Token to receive" prices={livePrices} />
+                <TokenDropdown selected={buyToken} onSelect={setBuyToken} exclude={sellToken.symbol} label="Token to receive" prices={livePrices} disabled={stellarBusy} />
               </div>
               {swapQuote && (
                 <div className="dash-meta dash-mono" style={{ marginTop: 8 }}>
-                  Min received: {swapQuote.minOut.toFixed(4)} {buyToken.symbol}
+                  Price estimate minimum: {swapQuote.minOut.toFixed(4)} {buyToken.symbol}
                 </div>
               )}
             </div>
@@ -215,8 +218,11 @@ export const SwapPage: React.FC = () => {
               </div>
             </div>
 
-            <button type="button" className="lp-btn solid" disabled>Swapping is not available yet</button>
-            <p className="dash-meta">Quotes are live. Swaps will open once wallet signing is connected.</p>
+            <StellarSwapExecution assetIn={sellToken.symbol} assetOut={buyToken.symbol} amountIn={sellAmount} onBusy={setStellarBusy} />
+            {!stellarPair && <>
+              <button type="button" className="lp-btn solid" disabled>Swapping this pair is not available yet</button>
+              <p className="dash-meta">Live prices provide estimates. Select XLM and USDC to request an executable Stellar swap quote.</p>
+            </>}
           </div>
         </section>
 
@@ -241,8 +247,8 @@ export const SwapPage: React.FC = () => {
               {visibleTokens.map(t => (
                 <div key={t.symbol} className="dash-row" style={{ cursor: 'pointer', background: sellToken.symbol === t.symbol ? 'var(--panel)' : undefined }}
                   role="button" tabIndex={0}
-                  onClick={() => setSellToken(t)}
-                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSellToken(t) } }}>
+                  aria-disabled={stellarBusy} onClick={() => { if (!stellarBusy) setSellToken(t) }}
+                  onKeyDown={e => { if (!stellarBusy && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); setSellToken(t) } }}>
                   <div className="bar" style={{ background: sellToken.symbol === t.symbol ? 'var(--ink)' : 'transparent' }} />
                   <div className="main">
                     <div className="t">{t.symbol} <span className="dash-tag">{t.category}</span></div>

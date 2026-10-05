@@ -6,6 +6,7 @@ import rateLimit from 'express-rate-limit'
 
 import { authRouter }     from './routes/auth'
 import { swapRouter }     from './routes/swap'
+import { stellarSwapRouter } from './routes/stellarSwap'
 import { escrowRouter }   from './routes/escrow'
 import { payoutRouter }   from './routes/payout'
 import { billsRouter }    from './routes/bills'
@@ -83,6 +84,7 @@ app.use(morgan('combined', {
 app.use(`${API}/health`,  healthRouter)
 app.use(`${API}/auth`,    authRouter)
 app.use(`${API}/swap`,    swapRouter)
+app.use(`${API}/stellar-swap`, stellarSwapRouter)
 app.use(`${API}/escrow`,  escrowRouter)
 app.use(`${API}/payout`,  payoutRouter)
 // Airtime is disabled: the top-up route called Africa's Talking without charging
