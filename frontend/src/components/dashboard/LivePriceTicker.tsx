@@ -5,8 +5,6 @@ const NAMES: Record<string, string> = {
   BTC: 'Bitcoin', ETH: 'Ethereum', SUI: 'Sui', APT: 'Aptos', USDC: 'USD Coin', USDT: 'Tether',
 }
 
-const NGN_RATE = 1565  // fallback until the backend returns a rate
-
 function fmt(n: number): string {
   if (n >= 1000) return n.toLocaleString('en-US', { maximumFractionDigits: 2 })
   if (n >= 1)    return n.toFixed(4)
@@ -15,7 +13,7 @@ function fmt(n: number): string {
 
 export const LivePriceTicker: React.FC = () => {
   const [prices, setPrices]   = useState<Record<string, number>>({})
-  const [ngnRate, setNgnRate] = useState(NGN_RATE)
+  const [ngnRate, setNgnRate] = useState<number | null>(null)
   const [state, setState]     = useState<'loading' | 'ok' | 'error'>('loading')
 
   useEffect(() => {
@@ -31,8 +29,8 @@ export const LivePriceTicker: React.FC = () => {
         setState('ok')
         try {
           const rateRes = await priceApi.convert('USDC', 'NGN')
-          setNgnRate(rateRes.rate || NGN_RATE)
-        } catch { /* keep the previous rate */ }
+          if (rateRes.rate) setNgnRate(rateRes.rate)
+        } catch { /* naira prices stay hidden until a rate loads */ }
       } catch {
         setState(s => (s === 'ok' ? s : 'error'))
       }
@@ -60,7 +58,7 @@ export const LivePriceTicker: React.FC = () => {
         <div className="dash-tick" role="listitem" key={symbol} title={NAMES[symbol] ?? symbol}>
           <b>{symbol}</b>
           <div className="usd">${fmt(prices[symbol])}</div>
-          <div className="ngn">₦{Math.round(prices[symbol] * ngnRate).toLocaleString('en-NG')}</div>
+          {ngnRate && <div className="ngn">₦{Math.round(prices[symbol] * ngnRate).toLocaleString('en-NG')}</div>}
         </div>
       ))}
     </div>

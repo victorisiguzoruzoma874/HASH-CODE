@@ -5,7 +5,6 @@ import { Login }         from './pages/Login'
 import { Signup }        from './pages/Signup'
 import { Dashboard }     from './pages/Dashboard'
 import { SwapPage }      from './pages/SwapPage'
-import { PoolsPage }     from './pages/PoolsPage'
 import { PortfolioPage } from './pages/PortfolioPage'
 import { OfframpPage }   from './pages/OfframpPage'
 import { AuthGuard }     from './components/ui/AuthGuard'
@@ -41,7 +40,6 @@ function App() {
           >
             <Route index            element={null} />
             <Route path="swap"      element={<SwapPage />} />
-            <Route path="pools"     element={<PoolsPage />} />
             <Route path="portfolio" element={<PortfolioPage />} />
             <Route path="offramp"   element={<OfframpPage />} />
           </Route>

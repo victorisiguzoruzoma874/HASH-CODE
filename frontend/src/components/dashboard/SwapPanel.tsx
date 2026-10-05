@@ -42,8 +42,6 @@ export const SwapPanel: React.FC = () => {
   const [sellToken,  setSellToken]  = useState(TOKENS[0])
   const [buyToken,   setBuyToken]   = useState(TOKENS[2])
   const [sellAmount, setSellAmount] = useState('')
-  const [loading,    setLoading]    = useState(false)
-  const [success,    setSuccess]    = useState(false)
   const [showSellDrop, setShowSellDrop] = useState(false)
   const [showBuyDrop,  setShowBuyDrop]  = useState(false)
 
@@ -75,17 +73,12 @@ export const SwapPanel: React.FC = () => {
   const buyUSD   = prices[buyToken.symbol]  ?? 0
   const rate     = sellUSD > 0 && buyUSD > 0 ? sellUSD / buyUSD : 0
   const buyAmount = sellAmount && rate > 0
-    ? (parseFloat(sellAmount) * rate * 0.995).toFixed(buyUSD >= 1000 ? 6 : 4)
+    ? (parseFloat(sellAmount) * rate).toFixed(buyUSD >= 1000 ? 6 : 4)
     : ''
 
   const rateLabel = rate > 0
     ? `1 ${sellToken.symbol} = ${rate >= 1000 ? rate.toLocaleString('en-US', { maximumFractionDigits: 2 }) : rate.toFixed(4)} ${buyToken.symbol}`
     : 'Loading rate…'
-
-  const handleSwap = () => {
-    setLoading(true)
-    setTimeout(() => { setLoading(false); setSuccess(true); setTimeout(() => setSuccess(false), 3000) }, 1800)
-  }
 
   const handleFlip = () => {
     setSellToken(buyToken)
@@ -99,7 +92,7 @@ export const SwapPanel: React.FC = () => {
     <section className="dash-card">
       <header>
         <h2>Quick swap</h2>
-        <span>0.5% fee</span>
+        <span>Estimate from live prices</span>
       </header>
 
       <div className="dash-pad" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -148,13 +141,12 @@ export const SwapPanel: React.FC = () => {
           </button>
         </div>
 
-        {success ? (
-          <div className="dash-ok" role="status">Swap successful</div>
-        ) : (
-          <button type="button" className="lp-btn solid" onClick={handleSwap} disabled={loading || !sellAmount || rate === 0}>
-            {loading ? 'Swapping…' : `Swap ${sellToken.symbol} for ${buyToken.symbol}`}
-          </button>
-        )}
+        <button type="button" className="lp-btn solid" disabled>
+          Swapping is not available yet
+        </button>
+        <p className="dash-meta">
+          Amounts are estimates from live prices. Swaps will open once wallet signing is connected.
+        </p>
       </div>
     </section>
   )

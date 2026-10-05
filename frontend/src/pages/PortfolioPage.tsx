@@ -1,130 +1,123 @@
-import React from 'react'
-import { ResponsiveContainer, Tooltip, AreaChart, Area, XAxis, YAxis, CartesianGrid } from 'recharts'
+import React, { useCallback, useEffect, useState } from 'react'
+import { escrowApi, walletApi, type WalletBalance, type WalletTransaction } from '../lib/api'
 
-const holdings = [
-  { symbol: 'ETH',  name: 'Ethereum',    amount: '2.45',     usd: '₦13,565,358', change: '+5.2%', positive: true,  pct: 57 },
-  { symbol: 'USDC', name: 'USD Coin',    amount: '1,429.55', usd: '₦2,237,246',  change: '0.0%',  positive: true,  pct: 9  },
-  { symbol: 'LINK', name: 'Chainlink',   amount: '142.00',   usd: '₦4,444,788',  change: '+8.7%', positive: true,  pct: 19 },
-  { symbol: 'DAI',  name: 'Dai',         amount: '500.00',   usd: '₦782,500',    change: '-0.1%', positive: false, pct: 3  },
-  { symbol: 'WETH', name: 'Wrapped ETH', amount: '0.50',     usd: '₦2,752,615',  change: '+5.1%', positive: true,  pct: 12 },
-]
+type Stats = { totalOrders: number; completedOrders: number; pendingOrders: number; totalNgnPaid: number }
 
-const chartData = [
-  { day: 'MON', value: 12400 }, { day: 'TUE', value: 13100 },
-  { day: 'WED', value: 12800 }, { day: 'THU', value: 14200 },
-  { day: 'FRI', value: 13900 }, { day: 'SAT', value: 14800 },
-  { day: 'SUN', value: 15143 },
-]
+const ngn = (n: number | string) =>
+  `₦${Number(n).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
-const recentTx = [
-  { type: 'send',    desc: 'Sent ETH',           amount: '-0.5 ETH',  usd: '-₦2,752,500', time: '2h ago' },
-  { type: 'receive', desc: 'Received LINK',       amount: '+142 LINK', usd: '+₦4,444,788', time: '5h ago' },
-  { type: 'swap',    desc: 'Swapped ETH → USDC', amount: '-0.3 ETH',  usd: '+₦1,649,250', time: '1d ago' },
-  { type: 'receive', desc: 'Received USDC',       amount: '+500 USDC', usd: '+₦782,500',   time: '2d ago' },
-]
+const PAGE_SIZE = 20
 
-const statCards = [
-  { label: 'Total value',    value: '₦23,699,507', change: '+12.4%', positive: true },
-  { label: '24h change',     value: '+₦1,317,630', change: '+5.9%',  positive: true },
-  { label: 'Total invested', value: '₦19,406,000', change: '',       positive: true },
-  { label: 'Total profit',   value: '+₦4,293,507', change: '+22.1%', positive: true },
-]
-
-const ChartTooltip = ({ active, payload, label }: any) => {
-  if (active && payload?.length) {
-    return (
-      <div className="dash-pop" style={{ position: 'static', minWidth: 0, padding: '8px 12px' }}>
-        <div style={{ fontSize: 12, color: 'var(--grey)' }}>{label}</div>
-        <b className="dash-mono">₦{(payload[0].value * 1565).toLocaleString()}</b>
-      </div>
-    )
+function describe(tx: WalletTransaction): string {
+  if (tx.description) return tx.description
+  switch (tx.source) {
+    case 'INTERNAL_TRANSFER_IN':  return `Received from ${tx.sender?.fullName ?? 'a HashPay user'}`
+    case 'INTERNAL_TRANSFER_OUT': return `Sent to ${tx.recipient?.fullName ?? 'a HashPay user'}`
+    case 'CRYPTO_DEPOSIT':        return `${tx.cryptoAsset ?? 'Crypto'} deposit`
+    case 'WITHDRAWAL':            return 'Withdrawal to bank'
+    case 'REVERSAL':              return 'Reversal'
+    default:                      return 'Transaction'
   }
-  return null
 }
 
-export const PortfolioPage: React.FC = () => (
-  <div className="dash-page">
-    <div className="dash-ph">
-      <div>
-        <h1>Portfolio</h1>
-        <p>Your complete asset overview.</p>
-      </div>
-    </div>
+export const PortfolioPage: React.FC = () => {
+  const [balance, setBalance] = useState<WalletBalance | null>(null)
+  const [stats, setStats]     = useState<Stats | null>(null)
+  const [txs, setTxs]         = useState<WalletTransaction[]>([])
+  const [total, setTotal]     = useState(0)
+  const [page, setPage]       = useState(1)
+  const [state, setState]     = useState<'loading' | 'ok' | 'error'>('loading')
 
-    <div className="dash-stats">
-      {statCards.map(s => (
-        <div className="dash-stat" key={s.label}>
-          <div className="lp-label" style={{ marginBottom: 4 }}>{s.label}</div>
-          <div className="v">{s.value}</div>
-          {s.change && <div className={`d ${s.positive ? 'dash-green' : 'dash-red'}`}>{s.change}</div>}
-        </div>
-      ))}
-    </div>
+  const load = useCallback(async (p: number) => {
+    setState(s => (s === 'ok' ? s : 'loading'))
+    try {
+      const [b, st, t] = await Promise.all([
+        walletApi.getBalance(),
+        escrowApi.getStats(),
+        walletApi.getTransactions(p, PAGE_SIZE),
+      ])
+      setBalance(b.data)
+      setStats(st)
+      setTxs(t.data.transactions)
+      setTotal(t.data.total)
+      setState('ok')
+    } catch {
+      setState('error')
+    }
+  }, [])
 
-    <section className="dash-card" aria-label="Performance">
-      <div className="dash-hero">
+  useEffect(() => { load(page) }, [load, page])
+
+  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+
+  const statCards = [
+    { label: 'Naira balance',      value: balance ? ngn(balance.ngnBalance) : '—' },
+    { label: 'Cashed out to bank', value: stats ? ngn(stats.totalNgnPaid) : '—' },
+    { label: 'Completed orders',   value: stats ? String(stats.completedOrders) : '—' },
+    { label: 'Pending orders',     value: stats ? String(stats.pendingOrders) : '—' },
+  ]
+
+  return (
+    <div className="dash-page">
+      <div className="dash-ph">
         <div>
-          <div className="lp-label" style={{ marginBottom: 6 }}>Performance</div>
-          <div className="dash-big">₦23,699,507</div>
+          <h1>Portfolio</h1>
+          <p>Your naira balance and every transaction on your account.</p>
         </div>
-        <span className="dash-green" style={{ fontWeight: 600 }}>+12.4% this week</span>
       </div>
-      <div className="dash-chart" style={{ height: 220 }}>
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={chartData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-            <CartesianGrid stroke="var(--line)" strokeOpacity={0.12} vertical={false} />
-            <XAxis dataKey="day" tick={{ fill: 'var(--grey)', fontSize: 11 }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fill: 'var(--grey)', fontSize: 11 }} axisLine={false} tickLine={false}
-              tickFormatter={v => `₦${(v * 1565 / 1_000_000).toFixed(1)}M`} />
-            <Tooltip content={<ChartTooltip />} cursor={{ stroke: 'var(--line)', strokeOpacity: 0.3 }} />
-            <Area type="monotone" dataKey="value" stroke="var(--ink)" strokeWidth={2} fill="none" dot={false} isAnimationActive={false}
-              activeDot={{ r: 4, fill: 'var(--ink)', stroke: 'var(--bg)', strokeWidth: 2 }} />
-          </AreaChart>
-        </ResponsiveContainer>
-      </div>
-    </section>
 
-    <div className="dash-2col">
-      <section className="dash-card" aria-label="Holdings">
-        <header><h2>Holdings</h2><span>{holdings.length} assets</span></header>
-        <div className="dash-tablewrap">
-          <div className="dash-tr head" style={{ '--cols': '1.6fr 1fr 1.3fr 0.8fr 1.6fr' } as React.CSSProperties}>
-            {['Asset', 'Amount', 'Value', '24h', 'Allocation'].map(h => <div key={h}>{h}</div>)}
-          </div>
-          {holdings.map(h => (
-            <div className="dash-tr" key={h.symbol} style={{ '--cols': '1.6fr 1fr 1.3fr 0.8fr 1.6fr' } as React.CSSProperties}>
-              <div>
-                <b>{h.symbol}</b>
-                <div className="dash-meta">{h.name}</div>
-              </div>
-              <span className="dash-mono">{h.amount}</span>
-              <span className="dash-mono">{h.usd}</span>
-              <span className={`dash-mono ${h.positive ? 'dash-green' : 'dash-red'}`}>{h.change}</span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div className="dash-bar" style={{ flex: 1 }}><i style={{ width: `${h.pct}%` }} /></div>
-                <span className="dash-meta" style={{ width: 32, textAlign: 'right' }}>{h.pct}%</span>
-              </div>
-            </div>
-          ))}
+      {state === 'error' && (
+        <div className="lp-error" role="alert">
+          Your portfolio could not be loaded. Check your connection, then <button className="lp-link" style={{ background: 'none', border: 0, font: 'inherit', textDecoration: 'underline', cursor: 'pointer', color: 'inherit' }} onClick={() => load(page)}>try again</button>.
         </div>
-      </section>
+      )}
 
-      <section className="dash-card" aria-label="Recent transactions">
-        <header><h2>Recent transactions</h2><span>Last 4</span></header>
-        {recentTx.map((tx, i) => (
-          <div className="dash-row" key={i}>
-            <div className="bar" style={tx.type === 'receive' ? undefined : { background: 'var(--meta)' }} />
-            <div className="main">
-              <div className="t">{tx.desc}</div>
-              <div className="sub">{tx.time}</div>
-            </div>
-            <div className="num">
-              <span className={tx.type === 'receive' ? 'dash-green' : undefined}>{tx.usd}</span>
-              <small>{tx.amount}</small>
-            </div>
+      <div className="dash-stats">
+        {statCards.map(s => (
+          <div className="dash-stat" key={s.label}>
+            <div className="lp-label" style={{ marginBottom: 4 }}>{s.label}</div>
+            <div className="v">{state === 'loading' ? '…' : s.value}</div>
           </div>
         ))}
+      </div>
+
+      <section className="dash-card" aria-label="Transactions">
+        <header>
+          <h2>Transactions</h2>
+          <span>{total} total</span>
+        </header>
+        {state === 'loading' && <p className="dash-empty">Loading transactions…</p>}
+        {state === 'ok' && txs.length === 0 && (
+          <p className="dash-empty">No transactions yet. Receive or send money and it will appear here.</p>
+        )}
+        {txs.map(tx => {
+          const credit = tx.type === 'CREDIT'
+          const barClass = tx.status === 'FAILED' ? 'failed' : tx.status === 'PENDING' ? 'pending' : ''
+          return (
+            <div className="dash-row" key={tx.id}>
+              <div className={`bar ${barClass}`} />
+              <div className="main">
+                <div className="t">{describe(tx)}</div>
+                <div className="sub">
+                  {tx.status.charAt(0) + tx.status.slice(1).toLowerCase()} · {new Date(tx.createdAt).toLocaleString()}
+                  {tx.reference ? <> · <span className="dash-mono">{tx.reference}</span></> : null}
+                </div>
+              </div>
+              <div className="num">
+                <span className={credit ? 'dash-green' : undefined}>{credit ? '+' : '−'}{ngn(tx.amount)}</span>
+                <small>Balance {ngn(tx.balanceAfter)}</small>
+              </div>
+            </div>
+          )
+        })}
+        {pages > 1 && (
+          <div className="dash-pad" style={{ display: 'flex', gap: 8, alignItems: 'center', borderTop: '1px solid var(--line)' }}>
+            <button className="lp-btn small" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>Previous</button>
+            <span className="dash-grey" style={{ fontSize: 13 }}>Page {page} of {pages}</span>
+            <button className="lp-btn small" disabled={page >= pages} onClick={() => setPage(p => p + 1)}>Next</button>
+          </div>
+        )}
       </section>
     </div>
-  </div>
-)
+  )
+}

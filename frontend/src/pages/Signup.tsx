@@ -118,18 +118,9 @@ export const Signup: React.FC = () => {
             <h2>What you get</h2>
             <div className="lp-box">
               <ul>
-                {['Swap across Sui and Ethereum', 'Settle to NGN, GHS, KES, XOF and XAF', 'Earn up to 12% APY in pools', 'Non-custodial. We never hold your funds']
-                  .map(s => <li key={s}>{s}</li>)}
+                {['A HashPay account number for receiving naira', 'Free instant transfers to other HashPay users', 'Live crypto prices in dollars and naira', 'Signed quotes for converting crypto to cash']
+                .map(s => <li key={s}>{s}</li>)}
               </ul>
-            </div>
-            <div>
-              <div className="lp-label">Security</div>
-              <div className="lp-box">
-                <ul>
-                  {['AES-256 encryption', 'KYC verified offramp']
-                    .map(s => <li key={s}>{s}<span>active</span></li>)}
-                </ul>
-              </div>
             </div>
           </div>
         </aside>

@@ -1,21 +1,21 @@
 import React from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
+import { useCurrentAccount, useDisconnectWallet } from '@mysten/dapp-kit'
 import { useStore } from '../../store/useStore'
 import { useApiStore } from '../../store/useApiStore'
 
 const navItems = [
   { to: '/dashboard',           label: 'Dashboard', end: true },
   { to: '/dashboard/swap',      label: 'Swap' },
-  { to: '/dashboard/pools',     label: 'Pools' },
   { to: '/dashboard/portfolio', label: 'Portfolio' },
   { to: '/dashboard/offramp',   label: 'Offramp' },
 ]
 
 export const Sidebar: React.FC = () => {
-  const wallet           = useStore(s => s.wallet)
+  const account          = useCurrentAccount()
+  const { mutate: disconnect } = useDisconnectWallet()
   const sidebarOpen      = useStore(s => s.ui.sidebarOpen)
   const toggleSidebar    = useStore(s => s.toggleSidebar)
-  const disconnectWallet = useStore(s => s.disconnectWallet)
   const apiLogout        = useApiStore(s => s.logout)
   const navigate         = useNavigate()
 
@@ -45,14 +45,14 @@ export const Sidebar: React.FC = () => {
 
         <div className="dash-side-foot">
           <div className="dash-wallet">
-            <div className="addr">{wallet.address}</div>
-            <div className={`state${wallet.isConnected ? ' on' : ''}`}>
-              {wallet.isConnected ? 'Wallet connected' : 'Wallet not connected'}
+            <div className="addr">{account ? `${account.address.slice(0, 8)}…${account.address.slice(-6)}` : '—'}</div>
+            <div className={`state${account ? ' on' : ''}`}>
+              {account ? 'Sui wallet connected' : 'No wallet connected'}
             </div>
           </div>
           <button
             className="lp-btn small" style={{ width: '100%' }}
-            onClick={() => { apiLogout(); disconnectWallet(); navigate('/login') }}
+            onClick={() => { apiLogout(); if (account) disconnect(); navigate('/login') }}
           >
             Sign out
           </button>

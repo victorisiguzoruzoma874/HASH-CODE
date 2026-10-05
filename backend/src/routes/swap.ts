@@ -32,7 +32,6 @@ swapRouter.post(
 
       const amountOut    = parseFloat(amountIn) * rate
       const minOut       = amountOut * (1 - slippageBps / 10_000)
-      const priceImpact  = 0.05  // mock — real DEX would calculate this
 
       res.json({
         assetIn,
@@ -42,9 +41,6 @@ swapRouter.post(
         minOut,
         rate,
         slippageBps,
-        priceImpact,
-        networkFee:  0.00042,
-        networkFeeUSD: 0.00042 * priceIn,
         expiresAt:   new Date(Date.now() + 30_000).toISOString(),
         quoteId:     `Q-${Date.now()}`,
       })

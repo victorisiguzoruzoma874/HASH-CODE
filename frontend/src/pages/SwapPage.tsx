@@ -4,47 +4,40 @@ import { priceApi } from '../lib/api'
 
 // ── 20 tokens ────────────────────────────────────────────────
 const ALL_TOKENS = [
-  { symbol: 'ETH',   name: 'Ethereum',        balance: '2.45',      category: 'Layer 1' },
-  { symbol: 'USDC',  name: 'USD Coin',         balance: '1,429.55',  category: 'Stablecoin' },
-  { symbol: 'USDT',  name: 'Tether',           balance: '850.00',    category: 'Stablecoin' },
-  { symbol: 'WBTC',  name: 'Wrapped Bitcoin',  balance: '0.012',     category: 'Wrapped' },
-  { symbol: 'SUI',   name: 'Sui',              balance: '320.50',    category: 'Layer 1' },
-  { symbol: 'APT',   name: 'Aptos',            balance: '45.00',     category: 'Layer 1' },
-  { symbol: 'BNB',   name: 'BNB Chain',        balance: '1.80',      category: 'Layer 1' },
-  { symbol: 'SOL',   name: 'Solana',           balance: '12.30',     category: 'Layer 1' },
-  { symbol: 'MATIC', name: 'Polygon',          balance: '2,400.00',  category: 'Layer 2' },
-  { symbol: 'AVAX',  name: 'Avalanche',        balance: '8.75',      category: 'Layer 1' },
-  { symbol: 'LINK',  name: 'Chainlink',        balance: '142.00',    category: 'DeFi' },
-  { symbol: 'DAI',   name: 'Dai',              balance: '500.00',    category: 'Stablecoin' },
-  { symbol: 'WETH',  name: 'Wrapped ETH',      balance: '0.50',      category: 'Wrapped' },
-  { symbol: 'UNI',   name: 'Uniswap',          balance: '28.00',     category: 'DeFi' },
-  { symbol: 'AAVE',  name: 'Aave',             balance: '3.40',      category: 'DeFi' },
-  { symbol: 'ARB',   name: 'Arbitrum',         balance: '600.00',    category: 'Layer 2' },
-  { symbol: 'OP',    name: 'Optimism',         balance: '250.00',    category: 'Layer 2' },
-  { symbol: 'DOGE',  name: 'Dogecoin',         balance: '5,000.00',  category: 'Meme' },
-  { symbol: 'ADA',   name: 'Cardano',          balance: '900.00',    category: 'Layer 1' },
-  { symbol: 'DOT',   name: 'Polkadot',         balance: '55.00',     category: 'Layer 1' },
+  { symbol: 'ETH',   name: 'Ethereum',        category: 'Layer 1' },
+  { symbol: 'USDC',  name: 'USD Coin',         category: 'Stablecoin' },
+  { symbol: 'USDT',  name: 'Tether',           category: 'Stablecoin' },
+  { symbol: 'WBTC',  name: 'Wrapped Bitcoin',  category: 'Wrapped' },
+  { symbol: 'SUI',   name: 'Sui',              category: 'Layer 1' },
+  { symbol: 'APT',   name: 'Aptos',            category: 'Layer 1' },
+  { symbol: 'BNB',   name: 'BNB Chain',        category: 'Layer 1' },
+  { symbol: 'SOL',   name: 'Solana',           category: 'Layer 1' },
+  { symbol: 'MATIC', name: 'Polygon',          category: 'Layer 2' },
+  { symbol: 'AVAX',  name: 'Avalanche',        category: 'Layer 1' },
+  { symbol: 'LINK',  name: 'Chainlink',        category: 'DeFi' },
+  { symbol: 'DAI',   name: 'Dai',              category: 'Stablecoin' },
+  { symbol: 'WETH',  name: 'Wrapped ETH',      category: 'Wrapped' },
+  { symbol: 'UNI',   name: 'Uniswap',          category: 'DeFi' },
+  { symbol: 'AAVE',  name: 'Aave',             category: 'DeFi' },
+  { symbol: 'ARB',   name: 'Arbitrum',         category: 'Layer 2' },
+  { symbol: 'OP',    name: 'Optimism',         category: 'Layer 2' },
+  { symbol: 'DOGE',  name: 'Dogecoin',         category: 'Meme' },
+  { symbol: 'ADA',   name: 'Cardano',          category: 'Layer 1' },
+  { symbol: 'DOT',   name: 'Polkadot',         category: 'Layer 1' },
 ]
 
 type Token = typeof ALL_TOKENS[number]
 
 const CATEGORIES = ['All', 'Layer 1', 'Layer 2', 'Stablecoin', 'DeFi', 'Wrapped', 'Meme']
 
-const recentSwaps = [
-  { from: 'ETH',  to: 'USDC', amount: '0.5 ETH',   received: '₦2,752,500', time: '2h ago',  status: 'completed' },
-  { from: 'SUI',  to: 'USDT', amount: '120 SUI',   received: '389.00 USDT',time: '5h ago',  status: 'completed' },
-  { from: 'LINK', to: 'ETH',  amount: '50 LINK',   received: '0.028 ETH',  time: '1d ago',  status: 'completed' },
-  { from: 'ETH',  to: 'DAI',  amount: '0.2 ETH',   received: '703.29 DAI', time: '2d ago',  status: 'completed' },
-  { from: 'MATIC',to: 'USDC', amount: '500 MATIC', received: '412.00 USDC',time: '3d ago',  status: 'completed' },
-]
 
 const fmtPrice = (n: number) =>
   n >= 1000 ? n.toLocaleString('en-US', { maximumFractionDigits: 0 }) : n.toFixed(4)
 
 // ── Token selector dropdown ───────────────────────────────────
 const TokenDropdown: React.FC<{
-  selected: Token; onSelect: (t: Token) => void; exclude?: string; label: string
-}> = ({ selected, onSelect, exclude, label }) => {
+  selected: Token; onSelect: (t: Token) => void; exclude?: string; label: string; prices: Record<string, number>
+}> = ({ selected, onSelect, exclude, label, prices }) => {
   const [open, setOpen]         = useState(false)
   const [search, setSearch]     = useState('')
   const [category, setCategory] = useState('All')
@@ -92,7 +85,7 @@ const TokenDropdown: React.FC<{
               <button key={t.symbol} type="button" role="option" aria-selected={selected.symbol === t.symbol}
                 onClick={() => { onSelect(t); setOpen(false); setSearch(''); setCategory('All') }}>
                 <span><b>{t.symbol}</b> <span className="dash-meta">{t.name}</span></span>
-                <span className="p">{t.balance}</span>
+                <span className="p">{prices[t.symbol] ? `$${fmtPrice(prices[t.symbol])}` : ''}</span>
               </button>
             ))}
           </div>
@@ -107,8 +100,6 @@ export const SwapPage: React.FC = () => {
   const [sellToken,  setSellToken]  = useState(ALL_TOKENS[0])
   const [buyToken,   setBuyToken]   = useState(ALL_TOKENS[1])
   const [sellAmount, setSellAmount] = useState('')
-  const [loading,    setLoading]    = useState(false)
-  const [success,    setSuccess]    = useState(false)
   const [listSearch, setListSearch] = useState('')
   const [listCategory, setListCategory] = useState('All')
   const [livePrices, setLivePrices] = useState<Record<string, number>>({})
@@ -141,11 +132,6 @@ export const SwapPage: React.FC = () => {
   const rate      = swapQuote?.rate ?? 0
   const buyAmount = swapQuote ? swapQuote.amountOut.toFixed(4) : ''
 
-  const handleSwap = () => {
-    setLoading(true)
-    setTimeout(() => { setLoading(false); setSuccess(true); setTimeout(() => setSuccess(false), 3000) }, 2000)
-  }
-
   const handleFlip = () => { setSellToken(buyToken); setBuyToken(sellToken); setSellAmount('') }
 
   const visibleTokens = ALL_TOKENS.filter(t =>
@@ -156,8 +142,7 @@ export const SwapPage: React.FC = () => {
 
   const details = [
     { label: 'Rate',        value: rate > 0 ? `1 ${sellToken.symbol} = ${rate.toLocaleString()} ${buyToken.symbol}` : '—' },
-    { label: 'Slippage',    value: swapQuote ? `${(swapQuote.slippageBps / 100).toFixed(1)}%` : '0.5%' },
-    { label: 'Network fee', value: swapQuote ? `~$${swapQuote.networkFeeUSD.toFixed(2)}` : '—' },
+    { label: 'Slippage',    value: swapQuote ? `${(swapQuote.slippageBps / 100).toFixed(1)}%` : '—' },
     { label: 'Route',       value: `${sellToken.symbol} → ${buyToken.symbol}` },
   ]
 
@@ -166,7 +151,7 @@ export const SwapPage: React.FC = () => {
       <div className="dash-ph">
         <div>
           <h1>Swap tokens</h1>
-          <p>Instant cross-chain exchange across {ALL_TOKENS.length} tokens with MEV protection.</p>
+          <p>Get a live quote across {ALL_TOKENS.length} tokens.</p>
         </div>
       </div>
 
@@ -175,18 +160,17 @@ export const SwapPage: React.FC = () => {
         <section className="dash-card" aria-label="Swap">
           <header>
             <h2>Quick swap</h2>
-            <span>Best rate across all pools · 0.5% fee</span>
+            <span>Quote from live prices</span>
           </header>
           <div className="dash-pad" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div className="dash-box">
               <div className="top">
                 <label htmlFor="sp-sell">You pay</label>
-                <span>Balance: {sellToken.balance} {sellToken.symbol}</span>
               </div>
               <div className="line">
                 <input id="sp-sell" className="dash-amount" style={{ fontSize: 26 }} type="number" inputMode="decimal" min="0"
                   value={sellAmount} onChange={e => setSellAmount(e.target.value)} placeholder="0.00" />
-                <TokenDropdown selected={sellToken} onSelect={setSellToken} exclude={buyToken.symbol} label="Token to pay with" />
+                <TokenDropdown selected={sellToken} onSelect={setSellToken} exclude={buyToken.symbol} label="Token to pay with" prices={livePrices} />
               </div>
               {livePrices[sellToken.symbol] && sellAmount && (
                 <div className="dash-meta dash-mono" style={{ marginTop: 8 }}>
@@ -200,13 +184,12 @@ export const SwapPage: React.FC = () => {
             <div className="dash-box">
               <div className="top">
                 <span>You receive</span>
-                <span>Balance: {buyToken.balance} {buyToken.symbol}</span>
               </div>
               <div className="line">
                 <div className="dash-amount dash-green" style={{ fontSize: 26 }} aria-live="polite">
                   {swapLoading ? 'Loading…' : (buyAmount || '0.00')}
                 </div>
-                <TokenDropdown selected={buyToken} onSelect={setBuyToken} exclude={sellToken.symbol} label="Token to receive" />
+                <TokenDropdown selected={buyToken} onSelect={setBuyToken} exclude={sellToken.symbol} label="Token to receive" prices={livePrices} />
               </div>
               {swapQuote && (
                 <div className="dash-meta dash-mono" style={{ marginTop: 8 }}>
@@ -231,13 +214,8 @@ export const SwapPage: React.FC = () => {
               </div>
             </div>
 
-            {success ? (
-              <div className="dash-ok" role="status">Swap successful</div>
-            ) : (
-              <button type="button" className="lp-btn solid" onClick={handleSwap} disabled={loading || !sellAmount}>
-                {loading ? 'Swapping…' : `Swap ${sellToken.symbol} for ${buyToken.symbol}`}
-              </button>
-            )}
+            <button type="button" className="lp-btn solid" disabled>Swapping is not available yet</button>
+            <p className="dash-meta">Quotes are live. Swaps will open once wallet signing is connected.</p>
           </div>
         </section>
 
@@ -270,30 +248,13 @@ export const SwapPage: React.FC = () => {
                     <div className="sub">{t.name}</div>
                   </div>
                   <div className="num">
-                    {t.balance}
-                    <small>{livePrices[t.symbol] ? `$${fmtPrice(livePrices[t.symbol])}` : 'Balance'}</small>
+                    {livePrices[t.symbol] ? `$${fmtPrice(livePrices[t.symbol])}` : '—'}
                   </div>
                 </div>
               ))}
             </div>
           </section>
 
-          <section className="dash-card" aria-label="Recent swaps">
-            <header><h2>Recent swaps</h2></header>
-            {recentSwaps.map((s, i) => (
-              <div className="dash-row" key={i}>
-                <div className="bar" />
-                <div className="main">
-                  <div className="t">{s.from} → {s.to}</div>
-                  <div className="sub">{s.amount} · {s.time}</div>
-                </div>
-                <div className="num">
-                  <span className="dash-green">{s.received}</span>
-                  <small>{s.status}</small>
-                </div>
-              </div>
-            ))}
-          </section>
         </div>
       </div>
     </div>

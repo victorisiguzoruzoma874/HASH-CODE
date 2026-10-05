@@ -14,21 +14,14 @@ const CURRENCIES = [
 ]
 
 const FEATURES = [
-  { title: 'Instant swaps',     desc: 'Cross-chain token exchange in under 400ms with built-in MEV protection.' },
-  { title: 'Bank-grade security', desc: 'AES-256 encryption and secp256k1 signed quotes on every transaction.' },
-  { title: 'Non-custodial',     desc: 'Your keys, your assets. We never hold your funds.' },
-  { title: 'Up to 12% APY',     desc: 'Earn yield through audited liquidity pools.' },
-  { title: 'KYC-gated offramp', desc: 'Convert crypto and settle to a local bank account in minutes.' },
-  { title: 'Sui and Ethereum',  desc: 'Live on both mainnets. Swap, send and convert between them.' },
+  { title: 'Naira wallet',        desc: 'Get a HashPay account number and receive deposits by bank transfer.' },
+  { title: 'Free instant transfers', desc: 'Send naira to any HashPay account in seconds, at no cost.' },
+  { title: 'Live crypto prices',  desc: 'Track prices for BTC, ETH, SUI, APT and stablecoins in dollars and naira.' },
+  { title: 'Cash out to your bank', desc: 'Get a signed quote for converting crypto to naira and verify your bank account.' },
+  { title: 'Signed quotes',       desc: 'Every conversion quote is signed by HashPay so the rate you see is the rate you get.' },
 ]
 
-const SECURITY = ['AES-256 encryption', 'MPC authentication', 'KYC verified', 'secp256k1 signed quotes']
-
-const STATS = [
-  { value: '297k',   label: 'transactions per second', tone: 'green' },
-  { value: '<400ms', label: 'end-to-end latency',      tone: 'green' },
-  { value: '1,400+', label: 'distributed nodes',       tone: 'ink'   },
-]
+const SECURITY = ['AES-256 encryption for sensitive data', 'Signed conversion quotes (secp256k1)']
 
 const COINS: { symbol: string; name: string }[] = [
   { symbol: 'BTC',  name: 'Bitcoin'  },
@@ -97,10 +90,9 @@ export const Landing: React.FC = () => {
         <main className="lp-left">
           <div className="lp-col">
             <section>
-              <div className="lp-label">Live on Sui and Ethereum mainnet</div>
               <h1>DeFi payments built for Africa.</h1>
               <p className="lp-lede">
-                Swap, send and convert crypto across chains, with direct bank settlement to NGN, GHS, KES and beyond.
+                Hold naira, send it instantly, and convert crypto to cash in your bank account.
               </p>
             </section>
 
@@ -109,9 +101,6 @@ export const Landing: React.FC = () => {
                 <Link to="/signup" className="lp-btn solid">Create free account</Link>
                 <Link to="/login" className="lp-btn">Log in</Link>
               </div>
-              <p className="lp-label" style={{ marginTop: 12, marginBottom: 0 }}>
-                Trusted by 12,400+ users worldwide
-              </p>
             </section>
 
             <section>
@@ -128,7 +117,7 @@ export const Landing: React.FC = () => {
                 <small>{currency.note}</small>
               </p>
               <div className="lp-pills">
-                {['Bank transfer', 'KYC-gated', 'Minutes, not days'].map(t => <span key={t} className="lp-pill">{t}</span>)}
+                {['Bank transfer'].map(t => <span key={t} className="lp-pill">{t}</span>)}
               </div>
             </section>
 
@@ -145,28 +134,16 @@ export const Landing: React.FC = () => {
             </section>
 
             <section>
-              <div className="lp-label">Network</div>
-              <div className="lp-stats">
-                {STATS.map(s => (
-                  <div key={s.label} className="lp-stat">
-                    <b className={s.tone === 'green' ? 'lp-green' : undefined}>{s.value}</b>
-                    <span>{s.label}</span>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            <section>
               <div className="lp-label">Security</div>
               <div className="lp-box">
                 <ul>
-                  {SECURITY.map(s => <li key={s}>{s}<span>active</span></li>)}
+                  {SECURITY.map(s => <li key={s}>{s}</li>)}
                 </ul>
               </div>
             </section>
 
             <section>
-              <h2 style={{ marginBottom: 12 }}>Ready to move money?</h2>
+              <h2 style={{ marginBottom: 12 }}>Create your account</h2>
               <Link to="/signup" className="lp-btn solid">Create free account</Link>
             </section>
           </div>

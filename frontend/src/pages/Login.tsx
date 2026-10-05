@@ -140,14 +140,14 @@ export const Login: React.FC = () => {
 
         <aside className="lp-right" aria-label="About your account">
           <div className="lp-rightcol">
-            <h2>Your keys, your funds</h2>
-            <p className="lp-lede">HashPay is non-custodial. We never hold your assets.</p>
+            <h2>Welcome back</h2>
+            <p className="lp-lede">Log in to see your naira balance, send money and check live prices.</p>
             <div>
               <div className="lp-label">Security</div>
               <div className="lp-box">
                 <ul>
-                  {['AES-256 encryption', 'MPC authentication', 'KYC verified', 'secp256k1 signed quotes']
-                    .map(s => <li key={s}>{s}<span>active</span></li>)}
+                  {['AES-256 encryption for sensitive data', 'Signed conversion quotes (secp256k1)']
+                    .map(s => <li key={s}>{s}</li>)}
                 </ul>
               </div>
             </div>

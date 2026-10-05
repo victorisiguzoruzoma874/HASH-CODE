@@ -2,14 +2,10 @@ import React, { useEffect } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { Sidebar } from '../components/dashboard/Sidebar'
 import { TopBar } from '../components/dashboard/TopBar'
-import { ExchangeModal } from '../components/modals/ExchangeModal'
 import { SendModal } from '../components/modals/SendModal'
 import { ReceiveModal } from '../components/modals/ReceiveModal'
 import { ScanModal } from '../components/modals/ScanModal'
-import { AirtimeModal } from '../components/modals/AirtimeModal'
-import { DataModal } from '../components/modals/DataModal'
 import { ConvertModal } from '../components/modals/ConvertModal'
-import { BillPayModal } from '../components/modals/BillPayModal'
 import { useStore } from '../store/useStore'
 import { useApiStore } from '../store/useApiStore'
 import { DashboardHome } from '../components/dashboard/DashboardHome'
@@ -57,14 +53,10 @@ export const Dashboard: React.FC = () => {
         </main>
       </div>
 
-      <ExchangeModal isOpen={activeModal === 'exchange'} onClose={closeModal} />
       <SendModal     isOpen={activeModal === 'send'}     onClose={closeModal} />
       <ReceiveModal  isOpen={activeModal === 'receive'}  onClose={closeModal} />
       <ScanModal     isOpen={activeModal === 'scan'}     onClose={closeModal} />
-      <AirtimeModal  isOpen={activeModal === 'airtime'}  onClose={closeModal} />
-      <DataModal     isOpen={activeModal === 'data'}     onClose={closeModal} />
       <ConvertModal  isOpen={activeModal === 'convert'}  onClose={closeModal} />
-      <BillPayModal  isOpen={activeModal === 'bill'}     onClose={closeModal} />
     </div>
   )
 }

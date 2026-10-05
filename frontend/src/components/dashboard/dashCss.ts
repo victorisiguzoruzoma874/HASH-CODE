@@ -208,4 +208,25 @@ export const DASH_CSS = `
 .dash-order-wrap { border-bottom: 1px solid color-mix(in srgb, var(--line) 25%, transparent); }
 .dash-order-wrap:last-child { border-bottom: 0; }
 .dash-search2 { max-width: 220px; min-height: 40px; }
+
+/* Modal frame */
+.dash-modal-wrap { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; padding: 16px; }
+.dash-modal-scrim { position: absolute; inset: 0; background: rgba(0,0,0,0.5); border: 0; cursor: default; }
+.dash-modal {
+  position: relative; z-index: 1; width: 100%; max-height: calc(100vh - 32px); overflow-y: auto;
+  background: var(--bg); color: var(--ink); border: 1px solid var(--line);
+}
+.dash-modal-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; padding: 16px 20px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--bg); z-index: 2; }
+.dash-modal-head h2 { font-size: 18px; font-weight: 700; }
+.dash-modal-head p { font-size: 13px; color: var(--grey); margin-top: 2px; }
+.dash-modal-body { padding: 20px; }
+.dash-form { display: flex; flex-direction: column; gap: 16px; }
+.dash-notice { padding: 12px 14px; border: 1px solid var(--line); background: var(--field); font-size: 14px; color: var(--grey); }
+.dash-notice b { color: var(--ink); }
+.dash-found { padding: 10px 14px; border: 1px solid var(--green); color: var(--green); font-weight: 600; font-size: 14px; }
+.dash-select { position: relative; }
+.dash-selectbtn { width: 100%; min-height: 52px; padding: 0 14px; display: flex; justify-content: space-between; align-items: center; font: inherit; background: var(--field); color: var(--ink); border: 1px solid var(--line); border-radius: 0; cursor: pointer; text-align: left; }
+.dash-selectlist { position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 40; max-height: 240px; overflow-y: auto; background: var(--field); border: 1px solid var(--line); }
+.dash-selectlist [role="option"] { display: flex; justify-content: space-between; width: 100%; padding: 10px 14px; font: inherit; background: transparent; color: var(--ink); border: 0; border-bottom: 1px solid color-mix(in srgb, var(--line) 20%, transparent); cursor: pointer; text-align: left; }
+.dash-selectlist [role="option"]:hover, .dash-selectlist [role="option"][aria-selected="true"] { background: var(--panel); }
 `

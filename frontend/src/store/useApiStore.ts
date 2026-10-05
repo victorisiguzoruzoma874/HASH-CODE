@@ -70,7 +70,7 @@ export const useApiStore = create<ApiState>((set) => ({
       set({ user, authLoading: false })
     } catch (err: any) {
       const msg = err.code === 'NETWORK_ERROR'
-        ? 'Backend server is not running. Set VITE_MOCK_API=true in frontend/.env to use demo mode.'
+        ? 'Cannot reach the HashPay server. Check your connection and try again.'
         : (err.message ?? 'Login failed.')
       set({ authError: msg, authLoading: false })
       throw new Error(msg)
@@ -85,7 +85,7 @@ export const useApiStore = create<ApiState>((set) => ({
       set({ user, authLoading: false })
     } catch (err: any) {
       const msg = err.code === 'NETWORK_ERROR'
-        ? 'Backend server is not running. Set VITE_MOCK_API=true in frontend/.env to use demo mode.'
+        ? 'Cannot reach the HashPay server. Check your connection and try again.'
         : (err.message ?? 'Registration failed.')
       set({ authError: msg, authLoading: false })
       throw new Error(msg)

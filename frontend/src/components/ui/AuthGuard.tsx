@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
-import { getToken, saveToken } from '../../lib/api'
+import { getToken } from '../../lib/api'
 import { useApiStore } from '../../store/useApiStore'
 import { HashPayIcon } from './HashPayLogo'
 
@@ -8,19 +8,12 @@ interface AuthGuardProps {
   children: React.ReactNode
 }
 
-const MOCK_MODE = import.meta.env.VITE_MOCK_API === 'true'
-
 /**
  * AuthGuard
  * ─────────
  * Wraps protected routes. Redirects to /login if no JWT token.
  *
- * In MOCK mode (VITE_MOCK_API=true):
- *   - Auto-injects a mock token so the dashboard is always accessible
- *   - No real API call needed
- *
- * In production mode:
- *   - Validates JWT by calling /auth/me
+ * Validates JWT by calling /auth/me
  *   - Redirects to /login if token is missing or expired
  */
 export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
@@ -29,13 +22,6 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
   const [checking, setChecking] = useState(true)
 
   useEffect(() => {
-    // Mock mode: inject a fake token and skip validation
-    if (MOCK_MODE) {
-      if (!getToken()) saveToken('mock-jwt-token-dev')
-      setChecking(false)
-      return
-    }
-
     const token = getToken()
     if (!token) {
       setChecking(false)
@@ -54,7 +40,7 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
             <HashPayIcon size={52} />
           </div>
           <div className="text-[13px]" style={{ color: '#64748B' }}>
-            {MOCK_MODE ? 'Loading demo…' : 'Verifying session…'}
+            Verifying session…
           </div>
         </div>
       </div>
