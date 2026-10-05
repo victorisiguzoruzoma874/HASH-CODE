@@ -7,7 +7,8 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc --project tsconfig.json",
-    "start": "node dist/index.js",
+    "start": "npm run db:wallet-links && node dist/index.js",
+    "db:wallet-links": "prisma db execute --file prisma/wallet_connections_migration.sql --schema prisma/schema.prisma",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src --ext .ts"
@@ -16,6 +17,7 @@
     "@aptos-labs/ts-sdk": "^1.21.0",
     "@mysten/sui": "1.45.2",
     "@prisma/client": "^5.14.0",
+    "@stellar/stellar-sdk": "^17.2.1",
     "@types/bcryptjs": "^2.4.6",
     "@types/bull": "^4.10.4",
     "@types/cors": "^2.8.17",
@@ -26,6 +28,7 @@
     "@types/uuid": "^10.0.0",
     "axios": "^1.7.0",
     "bcryptjs": "^2.4.3",
+    "bs58": "^6.0.0",
     "bull": "^4.16.5",
     "cors": "^2.8.5",
     "dotenv": "^16.4.0",

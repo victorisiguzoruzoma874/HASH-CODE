@@ -10,6 +10,15 @@ const BASE      = import.meta.env.VITE_API_URL  ?? 'http://localhost:4000/api/v1
 
 // ── Types ────────────────────────────────────────────────────
 
+export type WalletProvider = 'sui' | 'metamask' | 'phantom' | 'freighter' | 'lobstr'
+export interface LinkedWallet {
+  id: string
+  provider: WalletProvider
+  chain: 'sui' | 'evm' | 'solana' | 'stellar'
+  address: string
+  createdAt: string
+}
+
 export interface User {
   id:                string
   email:             string
@@ -21,6 +30,7 @@ export interface User {
   kycLevel:          'NONE' | 'BASIC' | 'FULL'
   preferredCurrency: string | null
   role:              string
+  linkedWallets?:     LinkedWallet[]
 }
 
 export interface EscrowOrder {
@@ -149,8 +159,18 @@ export const authApi = {
     return post<{ user: User; token: string }>('/auth/login', body)
   },
 
-  connectWallet: (body: { walletAddress: string; chain: string; signature: string }) => {
-    return post<{ user: User; token: string }>('/auth/connect-wallet', body)
+  walletChallenge: (body: { walletAddress: string; provider: WalletProvider }) => {
+    return post<{ challengeId: string; message: string; expiresAt: string }>('/auth/wallet-challenge', body)
+  },
+
+  connectWallet: (body: { challengeId: string; signature: string }) => {
+    return post<{ wallet: LinkedWallet; message: string }>('/auth/connect-wallet', body)
+  },
+
+  wallets: () => get<{ wallets: LinkedWallet[] }>('/auth/wallets'),
+
+  unlinkWallet: (id: string) => {
+    return request<{ message: string }>(`/auth/wallets/${encodeURIComponent(id)}`, { method: 'DELETE' })
   },
 
   me: () => {

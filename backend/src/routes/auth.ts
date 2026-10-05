@@ -6,6 +6,8 @@ import { prisma } from '../config/database'
 import { validate } from '../middleware/validate'
 import { requireAuth, type AuthRequest } from '../middleware/auth'
 import { AppError } from '../middleware/errorHandler'
+import { WalletLinkService } from '../services/wallets/WalletLinkService'
+import { walletProviders } from '../services/wallets/WalletProof'
 
 async function generateUniqueAccountNumber(): Promise<string> {
   for (let attempt = 0; attempt < 10; attempt++) {
@@ -17,6 +19,7 @@ async function generateUniqueAccountNumber(): Promise<string> {
 }
 
 export const authRouter = Router()
+const walletLinks = new WalletLinkService()
 
 function signToken(payload: object): string {
   const opts: SignOptions = { expiresIn: (process.env.JWT_EXPIRES_IN ?? '7d') as SignOptions['expiresIn'] }
@@ -91,28 +94,41 @@ authRouter.post(
   '/connect-wallet',
   requireAuth,
   [
-    body('walletAddress').notEmpty().withMessage('Wallet address required'),
-    body('chain').isIn(['sui', 'aptos', 'evm']).withMessage('chain must be sui | aptos | evm'),
-    body('signature').notEmpty().withMessage('Signature required'),
+    body('challengeId').isHexadecimal().isLength({ min: 64, max: 64 }),
+    body('signature').isString().isLength({ min: 1, max: 4096 }),
   ],
   validate,
   async (req: AuthRequest, res: any, next: any) => {
     try {
-      const { walletAddress, chain } = req.body
-      const updateData: Record<string, string> = {}
-      if (chain === 'sui')   updateData.suiAddress   = walletAddress
-      if (chain === 'aptos') updateData.aptosAddress = walletAddress
-      if (chain === 'evm')   updateData.evmAddress   = walletAddress
-
-      const user = await prisma.user.update({
-        where:  { id: req.user!.id },
-        data:   updateData,
-        select: { id: true, email: true, aptosAddress: true, suiAddress: true, evmAddress: true },
-      })
-      res.json({ user, message: `${chain} wallet connected` })
+      const wallet = await walletLinks.link(req.user!.id, req.body.challengeId, req.body.signature)
+      res.json({ wallet, message: 'Wallet linked to your account.' })
     } catch (err) { next(err) }
   },
 )
+
+authRouter.post('/wallet-challenge', requireAuth, [
+  body('provider').isIn(walletProviders),
+  body('walletAddress').isString().isLength({ min: 1, max: 128 }),
+], validate, async (req: AuthRequest, res: any, next: any) => {
+  try {
+    const configuredOrigin = new URL(process.env.FRONTEND_URL ?? 'http://localhost:5173').origin
+    const origin = req.get('origin') ?? configuredOrigin
+    if (origin !== configuredOrigin) throw new AppError(403, 'Wallet request came from an unexpected website.', 'INVALID_WALLET_ORIGIN')
+    res.json(await walletLinks.challenge(req.user!.id, req.body.provider, req.body.walletAddress, origin))
+  } catch (err) { next(err) }
+})
+
+authRouter.get('/wallets', requireAuth, async (req: AuthRequest, res: any, next: any) => {
+  try { res.json({ wallets: await walletLinks.list(req.user!.id) }) }
+  catch (err) { next(err) }
+})
+
+authRouter.delete('/wallets/:id', requireAuth, async (req: AuthRequest, res: any, next: any) => {
+  try {
+    await walletLinks.unlink(req.user!.id, req.params.id)
+    res.json({ message: 'Wallet removed from your account.' })
+  } catch (err) { next(err) }
+})
 
 // ── GET /auth/me ─────────────────────────────────────────────
 authRouter.get('/me', requireAuth, async (req: AuthRequest, res: any, next: any) => {
@@ -124,6 +140,7 @@ authRouter.get('/me', requireAuth, async (req: AuthRequest, res: any, next: any)
         aptosAddress: true, suiAddress: true, evmAddress: true,
         kycStatus: true, kycLevel: true, role: true,
         preferredCurrency: true, createdAt: true,
+        linkedWallets: { select: { id: true, provider: true, chain: true, address: true, createdAt: true } },
       },
     })
     res.json({ user })

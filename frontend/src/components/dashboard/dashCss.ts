@@ -208,6 +208,18 @@ export const DASH_CSS = `
 .dash-order-wrap:last-child { border-bottom: 0; }
 .dash-search2 { max-width: 220px; min-height: 40px; }
 
+/* Account wallet connections */
+.dash-wallet-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.dash-wallet-option { display: flex; flex-direction: column; gap: 6px; min-width: 0; font-size: 13px; }
+.dash-wallet-option .lp-btn { flex-direction: column; align-items: flex-start; gap: 4px; min-height: 64px; text-align: left; }
+.dash-wallet-option .lp-btn span { font-size: 12px; }
+.dash-linked-wallets { list-style: none; padding: 0; margin: 0; }
+.dash-linked-wallets li { display: flex; gap: 12px; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.dash-linked-wallets li > div { min-width: 0; }
+.dash-wallet-address { overflow-wrap: anywhere; font-family: ui-monospace, monospace; font-size: 12px; color: var(--grey); margin-top: 6px; }
+.dash-linked-wallets .lp-btn { flex-shrink: 0; }
+@media (max-width: 420px) { .dash-wallet-options { grid-template-columns: 1fr; } }
+
 /* Modal frame */
 .dash-modal-wrap { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; padding: 16px; }
 .dash-modal-scrim { position: absolute; inset: 0; background: rgba(0,0,0,0.5); border: 0; cursor: default; }

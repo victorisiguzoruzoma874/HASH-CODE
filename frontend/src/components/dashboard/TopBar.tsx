@@ -30,7 +30,7 @@ export const TopBar: React.FC = () => {
 
       <div className="grow" />
 
-      <span className="dash-net"><i />Sui {network}</span>
+      <span className="dash-net">{account ? `Sui ${network}` : `${user?.linkedWallets?.length ?? 0} wallet${user?.linkedWallets?.length === 1 ? '' : 's'} linked`}</span>
 
       <button className="dash-iconbtn" onClick={toggle} aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}>
         {dark ? <Sun size={16} /> : <Moon size={16} />}

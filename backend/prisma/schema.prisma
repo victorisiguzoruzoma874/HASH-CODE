@@ -109,6 +109,7 @@ model User {
   airtimeTransactions AirtimeTransaction[]
   swapHistory      SwapRecord[]
   wallet           Wallet?
+  linkedWallets    LinkedWallet[]
   sentTransfers    WalletTransaction[] @relation("SentTransfers")
   receivedTransfers WalletTransaction[] @relation("ReceivedTransfers")
 
@@ -123,6 +124,20 @@ model User {
 }
 
 // ── Wallet (one per user) ────────────────────────────────────
+
+model LinkedWallet {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chain     String
+  address   String
+  provider  String
+  createdAt DateTime @default(now())
+
+  @@unique([chain, address])
+  @@index([userId])
+  @@map("linked_wallets")
+}
 
 model Wallet {
   id           String   @id @default(uuid())

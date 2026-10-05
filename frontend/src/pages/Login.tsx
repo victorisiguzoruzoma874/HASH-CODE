@@ -1,9 +1,7 @@
 import React, { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { useCurrentAccount, useConnectWallet, useWallets, useSignPersonalMessage } from '@mysten/dapp-kit'
 import { FlatShell } from '../components/ui/FlatShell'
 import { useApiStore } from '../store/useApiStore'
-import { authApi, saveToken } from '../lib/api'
 
 export const Login: React.FC = () => {
   const [email,    setEmail]    = useState('')
@@ -16,13 +14,8 @@ export const Login: React.FC = () => {
   const from     = (location.state as any)?.from?.pathname ?? '/dashboard'
 
   const login       = useApiStore(s => s.login)
-  const fetchMe     = useApiStore(s => s.fetchMe)
   const authLoading = useApiStore(s => s.authLoading)
 
-  const account     = useCurrentAccount()
-  const wallets     = useWallets()
-  const { mutate: connectWallet,      isPending: walletConnecting } = useConnectWallet()
-  const { mutate: signPersonalMessage } = useSignPersonalMessage()
 
   const handleEmailLogin = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -35,43 +28,6 @@ export const Login: React.FC = () => {
     }
   }
 
-  const handleWalletConnect = () => {
-    setError('')
-    if (wallets.length === 0) {
-      setError('No Sui wallet detected. Install Sui Wallet or Suiet.')
-      return
-    }
-    connectWallet(
-      { wallet: wallets[0] },
-      {
-        onSuccess: () => {
-          if (!account?.address) return
-          const challenge = `Sign in to HashPay\nAddress: ${account.address}\nTimestamp: ${Date.now()}`
-          signPersonalMessage(
-            { message: new TextEncoder().encode(challenge) },
-            {
-              onSuccess: async ({ signature }) => {
-                try {
-                  const { token } = await authApi.connectWallet({
-                    walletAddress: account.address,
-                    chain: 'SUI',
-                    signature,
-                  })
-                  saveToken(token)
-                  await fetchMe()
-                  navigate(from, { replace: true })
-                } catch (err: any) {
-                  setError(err.message ?? 'Wallet authentication failed.')
-                }
-              },
-              onError: (err) => setError(err.message ?? 'Failed to sign challenge.'),
-            }
-          )
-        },
-        onError: (err) => setError(err.message),
-      }
-    )
-  }
 
   return (
     <FlatShell>
@@ -91,14 +47,9 @@ export const Login: React.FC = () => {
 
             <section>
               <div className="lp-label"><span>Wallet</span></div>
-              <button type="button" className="lp-btn" onClick={handleWalletConnect} disabled={walletConnecting}>
-                {walletConnecting
-                  ? 'Connecting…'
-                  : account ? `Connected: ${account.address.slice(0, 8)}…` : 'Connect Sui wallet'}
-              </button>
+              <p className="lp-lede" style={{ fontSize: 14 }}>Log in with your email, then use Connect wallet in your dashboard to link Freighter, LOBSTR, MetaMask, Phantom or Sui.</p>
             </section>
 
-            <div className="lp-divider">or use email</div>
 
             <form className="lp-auth-form" onSubmit={handleEmailLogin}>
               <div className="lp-field">
