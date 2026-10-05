@@ -8,6 +8,7 @@ interface ConvertModalProps { isOpen: boolean; onClose: () => void }
 const ASSETS = [
   { symbol: 'USDT', name: 'Tether USD' },
   { symbol: 'USDC', name: 'USD Coin' },
+  { symbol: 'XLM',  name: 'Stellar' },
   { symbol: 'SUI',  name: 'Sui' },
   { symbol: 'ETH',  name: 'Ethereum' },
   { symbol: 'APT',  name: 'Aptos' },
@@ -53,13 +54,14 @@ export const ConvertModal: React.FC<ConvertModalProps> = ({ isOpen, onClose }) =
     if (!bank && banks.length > 0) setBank(banks[0])
   }, [banks, bank])
 
-  // Real, signed quote from the backend
+  // Fetch the backend quote, or a read-only estimate for native XLM.
   useEffect(() => {
     const n = parseFloat(debouncedAmount)
     if (!isOpen || !n || n <= 0) { setQuote(null); setQuoteError(''); return }
     let cancelled = false
     setQuoteLoading(true); setQuoteError('')
-    escrowApi.getQuote({ asset: asset.symbol, amountIn: n, currencyOut: 'NGN' })
+    const getQuote = asset.symbol === 'XLM' ? escrowApi.getEstimate : escrowApi.getQuote
+    getQuote({ asset: asset.symbol, amountIn: n, currencyOut: 'NGN' })
       .then(q => { if (!cancelled) setQuote(q) })
       .catch(e => { if (!cancelled) { setQuote(null); setQuoteError(e?.message ?? 'Could not get a quote. Try again.') } })
       .finally(() => { if (!cancelled) setQuoteLoading(false) })
@@ -133,7 +135,8 @@ export const ConvertModal: React.FC<ConvertModalProps> = ({ isOpen, onClose }) =
               </div>
             )}
             {quoteError && <p className="dash-red" style={{ fontSize: 13, marginTop: 8 }}>{quoteError}</p>}
-            {quote && !quote.signed && (
+            {quote?.estimate && <p className="dash-meta" style={{ fontSize: 13, marginTop: 8 }}>XLM cash-out estimate only. Stellar bank payouts are not available yet.</p>}
+            {quote && !quote.signed && !quote.estimate && (
               <p className="dash-red" style={{ fontSize: 13, marginTop: 8 }}>
                 This quote is not signed by the server, so the escrow contract would reject a deposit.
               </p>
@@ -175,7 +178,7 @@ export const ConvertModal: React.FC<ConvertModalProps> = ({ isOpen, onClose }) =
 
         <div className="dash-notice">
           <b>Deposits are not open yet.</b> You can check a live quote and verify your bank account here.
-          Sending crypto to escrow needs the Sui escrow contract deployed and configured on the server, so no money moves from this screen.
+          {asset.symbol === 'XLM' ? ' Stellar bank payouts need a settlement integration. No money moves from this screen.' : ' Sending crypto to escrow needs the Sui escrow contract deployed and configured on the server, so no money moves from this screen.'}
         </div>
 
         <button className="lp-btn solid" disabled>

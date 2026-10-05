@@ -146,3 +146,11 @@ approval rejection, quote review, pending confirmation and reload recovery on
 desktop/mobile. A live mainnet read found a route for 6 XLM to Circle USDC.
 No mainnet funds were moved during verification. Actual Freighter/LOBSTR
 extension approval and a deployed end-to-end swap still need to be verified.
+
+## XLM in Convert to cash
+
+The conversion modal lists XLM and requests a read-only naira estimate through
+`POST /escrow/estimate`, with the same displayed 0.5% fee calculation used by
+existing conversion quotes. This endpoint does not generate a Sui signature or
+deposit payload for native XLM. The modal explicitly labels the result as an
+estimate and keeps cash-out disabled until Stellar bank settlement is integrated.

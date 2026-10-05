@@ -18,6 +18,24 @@ const SUPPORTED_ASSETS     = ['USDC', 'USDT', 'ETH', 'SUI', 'APT', 'BTC']
 const FEE_BPS              = 50
 const QUOTE_VALID_EPOCHS   = 5n   // ~5 Sui epochs ≈ 5 hours
 
+// Stellar cash-out estimates do not issue a Sui escrow deposit signature.
+escrowRouter.post('/estimate', requireAuth, [
+  body('asset').isIn(['XLM']),
+  body('amountIn').isFloat({ gt: 0 }),
+  body('currencyOut').optional().isIn(SUPPORTED_CURRENCIES),
+], validate, async (req: AuthRequest, res: any, next: any) => {
+  try {
+    const { asset, amountIn, currencyOut = 'NGN' } = req.body
+    const quantity = Number(amountIn)
+    const rate = await oracle.getRate(asset, currencyOut)
+    const gross = quantity * rate
+    if (!Number.isFinite(gross)) throw new AppError(400, 'Enter a valid amount.', 'INVALID_AMOUNT')
+    const fee = gross * (FEE_BPS / 10_000)
+    res.setHeader('Cache-Control', 'no-store')
+    res.json({ asset, amountIn: quantity, currencyOut, rate, gross: Math.floor(gross), fee: Math.floor(fee), netAmount: Math.floor(gross - fee), feeBps: FEE_BPS, signed: false, estimate: true, expiresAt: new Date(Date.now() + 30_000).toISOString() })
+  } catch (error) { next(error) }
+})
+
 // ── GET /escrow/orders ───────────────────────────────────────
 escrowRouter.get('/orders', requireAuth, async (req: AuthRequest, res: any, next: any) => {
   try {

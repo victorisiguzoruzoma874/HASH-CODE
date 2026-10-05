@@ -81,6 +81,7 @@ export interface SwapQuote {
 }
 
 export interface ConvertQuote {
+  estimate?:      boolean
   asset:          string
   amountIn:       number
   currencyOut:    string
@@ -200,6 +201,7 @@ export const authApi = {
 // ── Escrow ────────────────────────────────────────────────────
 
 export const escrowApi = {
+  getEstimate: (body: { asset: string; amountIn: number; currencyOut: string }) => post<ConvertQuote>('/escrow/estimate', body),
   getOrders: (params?: { page?: number; limit?: number; status?: string }) => {
     const qs = new URLSearchParams(params as Record<string, string>).toString()
     return get<{ orders: EscrowOrder[]; pagination: { total: number; pages: number } }>(
