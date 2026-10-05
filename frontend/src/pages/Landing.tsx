@@ -1,423 +1,375 @@
-import React, { useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { Shield, Zap, Globe, ArrowRight, CheckCircle, TrendingUp, Lock } from 'lucide-react'
-import { HashPayLogo, HashPayIcon } from '../components/ui/HashPayLogo'
+import { Moon, Sun } from 'lucide-react'
+import { priceApi } from '../lib/api'
 
-const StatCard: React.FC<{
-  icon: React.ReactNode; label: string; value: string; sub: string; delay: number; accent: string
-}> = ({ icon, label, value, sub, delay, accent }) => (
-  <motion.div
-    initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-    transition={{ delay, duration: 0.5, ease: 'easeOut' }}
-    className="flex-1 bg-white rounded-2xl text-center"
-    style={{ padding: '32px 28px', boxShadow: '0 2px 8px rgba(10,25,41,0.08)', border: '1px solid #DDE6F2' }}
-  >
-    <div className="flex justify-center mb-4" style={{ color: accent }}>{icon}</div>
-    <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#7A97B4', marginBottom: 10 }}>
-      {label}
-    </div>
-    <div style={{ fontSize: 40, fontWeight: 900, lineHeight: 1, fontFamily: "'JetBrains Mono', monospace", color: accent, marginBottom: 6 }}>
-      {value}
-    </div>
-    <div style={{ fontSize: 13, fontWeight: 600, color: '#7A97B4' }}>{sub}</div>
-  </motion.div>
-)
+/* ── Content ──────────────────────────────────────────────── */
 
-const features = [
-  { icon: Zap,         title: 'Instant Swaps',       desc: 'Cross-chain token exchange in under 400ms with built-in MEV protection.' },
-  { icon: Shield,      title: 'Bank-Grade Security',  desc: 'AES-256 encryption and secp256k1 signed quotes on every transaction.' },
-  { icon: Globe,       title: 'African Currencies',   desc: 'Direct settlement to NGN, GHS, KES, XOF and XAF bank accounts.' },
-  { icon: Lock,        title: 'Non-Custodial',        desc: 'Your keys, your assets. We never hold your funds.' },
-  { icon: TrendingUp,  title: 'Up to 12% APY',        desc: 'Earn yield through audited, battle-tested liquidity pools.' },
-  { icon: CheckCircle, title: 'KYC-Gated Offramp',   desc: 'Convert crypto and settle to any local bank account in minutes.' },
+const CURRENCIES = [
+  { code: 'NGN', name: 'Nigerian naira',          note: 'Paid out to any Nigerian bank account.' },
+  { code: 'GHS', name: 'Ghanaian cedi',           note: 'Paid out to any Ghanaian bank account.' },
+  { code: 'KES', name: 'Kenyan shilling',         note: 'Paid out to any Kenyan bank account.' },
+  { code: 'XOF', name: 'West African CFA franc',  note: 'One currency across the West African CFA zone.' },
+  { code: 'XAF', name: 'Central African CFA franc', note: 'One currency across the Central African CFA zone.' },
 ]
 
+const FEATURES = [
+  { title: 'Instant swaps',     desc: 'Cross-chain token exchange in under 400ms with built-in MEV protection.' },
+  { title: 'Bank-grade security', desc: 'AES-256 encryption and secp256k1 signed quotes on every transaction.' },
+  { title: 'Non-custodial',     desc: 'Your keys, your assets. We never hold your funds.' },
+  { title: 'Up to 12% APY',     desc: 'Earn yield through audited liquidity pools.' },
+  { title: 'KYC-gated offramp', desc: 'Convert crypto and settle to a local bank account in minutes.' },
+  { title: 'Sui and Ethereum',  desc: 'Live on both mainnets. Swap, send and convert between them.' },
+]
+
+const SECURITY = ['AES-256 encryption', 'MPC authentication', 'KYC verified', 'secp256k1 signed quotes']
+
+const STATS = [
+  { value: '297k',   label: 'transactions per second', tone: 'green' },
+  { value: '<400ms', label: 'end-to-end latency',      tone: 'green' },
+  { value: '1,400+', label: 'distributed nodes',       tone: 'ink'   },
+]
+
+const COINS: { symbol: string; name: string }[] = [
+  { symbol: 'BTC',  name: 'Bitcoin'  },
+  { symbol: 'ETH',  name: 'Ethereum' },
+  { symbol: 'SUI',  name: 'Sui'      },
+  { symbol: 'APT',  name: 'Aptos'    },
+  { symbol: 'USDC', name: 'USD Coin' },
+  { symbol: 'USDT', name: 'Tether'   },
+]
+
+function fmtUsd(n: number): string {
+  if (n >= 1000) return n.toLocaleString('en-US', { maximumFractionDigits: 0 })
+  if (n >= 1)    return n.toFixed(2)
+  return n.toFixed(4)
+}
+
+/* ── Styles (scoped to .lp so the rest of the app is untouched) ── */
+
+const CSS = `
+.lp {
+  --bg: #EDE9E3; --panel: #E4DED6; --ink: #1A1A1A; --grey: #6B6B6B; --meta: #9B9B9B;
+  --line: #000000; --green: #3D8B37; --red: #C0392B; --on-ink: #FFFFFF; --field: #FFFFFF;
+  --solid: #000000;
+  background: var(--bg); color: var(--ink); min-height: 100vh;
+  display: flex; flex-direction: column;
+  font-family: system-ui, Inter, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-size: 15px; line-height: 1.5;
+}
+.lp[data-theme="dark"] {
+  --bg: #161513; --panel: #1E1C1A; --ink: #EDE9E3; --grey: #A19B93; --meta: #7A756E;
+  --line: #EDE9E3; --green: #5DB356; --red: #E0604F; --on-ink: #161513; --field: #161513;
+  --solid: #EDE9E3;
+}
+.lp *, .lp *::before, .lp *::after { box-sizing: border-box; }
+.lp a { color: inherit; }
+.lp :focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+
+.lp-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 32px; border-bottom: 1px solid var(--line); background: var(--bg);
+}
+.lp-logo { font-size: 20px; text-decoration: none; letter-spacing: -0.01em; }
+.lp-logo b { font-weight: 700; }
+.lp-logo span { font-weight: 300; }
+.lp-status { display: flex; align-items: center; gap: 20px; color: var(--grey); font-size: 14px; }
+.lp-status .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--green); margin-right: 8px; }
+.lp-toggle {
+  width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center;
+  background: transparent; color: var(--ink); border: 1px solid var(--line); cursor: pointer; border-radius: 0;
+}
+
+.lp-body { flex: 1; display: grid; grid-template-columns: 55fr 45fr; align-items: stretch; }
+.lp-left  { padding: 40px 32px 56px; background: var(--bg); }
+.lp-right { padding: 40px 32px 56px; background: var(--panel); border-left: 1px solid var(--line); }
+.lp-col { max-width: 640px; margin-left: auto; display: flex; flex-direction: column; gap: 32px; }
+.lp-rightcol { max-width: 520px; display: flex; flex-direction: column; gap: 20px; position: sticky; top: 24px; }
+
+.lp-label { font-size: 12px; color: var(--grey); margin-bottom: 8px; display: flex; justify-content: space-between; gap: 12px; }
+.lp h1 { font-size: clamp(34px, 5vw, 52px); line-height: 1.04; letter-spacing: -0.03em; font-weight: 800; margin: 0 0 16px; }
+.lp h2 { font-size: 18px; font-weight: 700; margin: 0; }
+.lp p  { margin: 0; }
+.lp-lede { color: var(--grey); font-size: 16px; max-width: 52ch; }
+
+.lp-btn {
+  display: flex; align-items: center; justify-content: center; width: 100%;
+  min-height: 52px; padding: 0 20px; font: inherit; font-weight: 600; text-decoration: none; text-align: center;
+  background: transparent; color: var(--ink); border: 1px solid var(--line); border-radius: 0; cursor: pointer;
+}
+.lp-btn:hover { background: var(--field); }
+.lp-btn.solid { background: var(--solid); color: var(--on-ink); }
+.lp-btn.solid:hover { opacity: 0.88; }
+.lp-btn.small { width: auto; min-height: 36px; padding: 0 14px; font-size: 13px; }
+.lp-btnrow { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; }
+
+.lp-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.lp-chip {
+  min-height: 48px; min-width: 76px; padding: 0 16px; font: inherit; font-weight: 600; cursor: pointer;
+  background: var(--field); color: var(--ink); border: 1px solid var(--line); border-radius: 0;
+}
+.lp-chip[aria-pressed="true"] { background: var(--solid); color: var(--on-ink); }
+.lp-note { margin-top: 12px; color: var(--ink); }
+.lp-note small { display: block; color: var(--grey); font-size: 13px; margin-top: 2px; }
+.lp-pills { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.lp-pill { padding: 3px 12px; font-size: 13px; border: 1px solid var(--line); border-radius: 999px; background: transparent; }
+
+.lp-grid { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--line); background: var(--field); }
+.lp-cell { padding: 16px; border-bottom: 1px solid var(--line); }
+.lp-cell:nth-child(odd) { border-right: 1px solid var(--line); }
+.lp-cell:nth-last-child(-n+2) { border-bottom: 0; }
+.lp-cell b { display: block; margin-bottom: 4px; }
+.lp-cell span { color: var(--grey); font-size: 14px; }
+
+.lp-box { border: 1px solid var(--line); background: var(--field); }
+.lp-box li { list-style: none; padding: 12px 16px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; }
+.lp-box li:last-child { border-bottom: 0; }
+.lp-box ul { margin: 0; padding: 0; }
+.lp-box li span { color: var(--green); font-size: 13px; }
+
+.lp-stats { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--line); }
+.lp-stat { padding: 16px; border-right: 1px solid var(--line); }
+.lp-stat:last-child { border-right: 0; }
+.lp-stat b { display: block; font-size: 26px; font-weight: 800; line-height: 1.1; }
+.lp-stat span { color: var(--grey); font-size: 13px; }
+.lp-green { color: var(--green); } .lp-red { color: var(--red); }
+
+.lp-counters { display: flex; gap: 28px; flex-wrap: wrap; }
+.lp-counters div { color: var(--grey); font-size: 14px; }
+.lp-counters b { font-size: 20px; margin-right: 6px; }
+
+.lp-list { border-top: 1px solid var(--line); }
+.lp-item { display: flex; align-items: stretch; gap: 14px; padding: 14px 0; border-bottom: 1px solid color-mix(in srgb, var(--line) 25%, transparent); }
+.lp-bar { width: 4px; background: var(--green); flex: none; }
+.lp-bar.stale { background: var(--red); }
+.lp-item .main { flex: 1; min-width: 0; }
+.lp-item .val { font-size: 18px; font-weight: 700; }
+.lp-item .sub { color: var(--grey); font-size: 13px; }
+.lp-item .mono { font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace; font-size: 12px; color: var(--meta); }
+.lp-empty { padding: 24px 0; color: var(--grey); }
+
+.lp-footer {
+  display: flex; flex-wrap: wrap; justify-content: space-between; gap: 16px;
+  padding: 16px 32px; border-top: 1px solid var(--line); color: var(--grey); font-size: 13px; background: var(--bg);
+}
+.lp-footer nav { display: flex; flex-wrap: wrap; gap: 20px; }
+.lp-footer a { text-decoration: none; } .lp-footer a:hover { text-decoration: underline; color: var(--ink); }
+
+@media (max-width: 860px) {
+  .lp-body { grid-template-columns: 1fr; }
+  .lp-right { border-left: 0; border-top: 1px solid var(--line); }
+  .lp-col, .lp-rightcol { max-width: none; margin: 0; position: static; }
+  .lp-left, .lp-right, .lp-header, .lp-footer { padding-left: 16px; padding-right: 16px; }
+  .lp-grid { grid-template-columns: 1fr; }
+  .lp-cell, .lp-cell:nth-child(odd) { border-right: 0; }
+  .lp-cell:nth-last-child(2) { border-bottom: 1px solid var(--line); }
+  .lp-btnrow { grid-template-columns: 1fr; }
+  .lp-stats { grid-template-columns: 1fr; }
+  .lp-stat { border-right: 0; border-bottom: 1px solid var(--line); }
+  .lp-stat:last-child { border-bottom: 0; }
+}
+`
+
+/* ── Page ─────────────────────────────────────────────────── */
+
+type Rates = Record<string, number>
+
 export const Landing: React.FC = () => {
-  const [menuOpen, setMenuOpen] = useState(false)
+  const [dark, setDark] = useState<boolean>(() => {
+    try { return localStorage.getItem('hp-landing-theme') === 'dark' } catch { return false }
+  })
+  const [currency, setCurrency] = useState(CURRENCIES[0])
+  const [rates, setRates]       = useState<Rates>({})
+  const [ngn, setNgn]           = useState<number | null>(null)
+  const [state, setState]       = useState<'loading' | 'ok' | 'error'>('loading')
+  const [updated, setUpdated]   = useState<Date | null>(null)
+  const [refreshing, setRefreshing] = useState(false)
+
+  const toggleTheme = () => {
+    setDark(d => {
+      try { localStorage.setItem('hp-landing-theme', d ? 'light' : 'dark') } catch { /* ignore */ }
+      return !d
+    })
+  }
+
+  const loadRates = useCallback(async () => {
+    setRefreshing(true)
+    try {
+      const res = await priceApi.getAll()
+      // Merge so a partial response never removes a row
+      setRates(prev => {
+        const next = { ...prev }
+        for (const [symbol, data] of Object.entries(res.prices)) next[symbol] = data.price
+        return next
+      })
+      setUpdated(new Date())
+      setState('ok')
+      try {
+        const r = await priceApi.convert('USDC', 'NGN')
+        if (r.rate) setNgn(r.rate)
+      } catch { /* naira column is hidden until the rate is available */ }
+    } catch {
+      setState(s => (s === 'ok' ? s : 'error'))
+    } finally {
+      setRefreshing(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadRates()
+    const id = setInterval(loadRates, 30_000)
+    return () => clearInterval(id)
+  }, [loadRates])
+
+  const live    = COINS.filter(c => rates[c.symbol] !== undefined).length
+  const missing = COINS.length - live
 
   return (
-    <div className="min-h-screen flex flex-col overflow-x-hidden" style={{ background: '#F0F4FA' }}>
+    <div className="lp" data-theme={dark ? 'dark' : 'light'}>
+      <style>{CSS}</style>
 
-      {/* Navbar */}
-      <nav
-        className="sticky top-0 z-40 w-full bg-white"
-        style={{ borderBottom: '1px solid #DDE6F2', boxShadow: '0 1px 4px rgba(10,25,41,0.06)' }}
-      >
-        <div className="max-w-[1200px] mx-auto px-8 h-[72px] flex items-center justify-between">
-          <Link to="/"><HashPayLogo size={38} /></Link>
-
-          <div className="hidden md:flex items-center gap-8">
-            {['Ecosystem', 'Technology', 'Security', 'Docs'].map(item => (
-              <a key={item} href="#"
-                style={{ fontSize: 15, fontWeight: 700, color: '#3D5A78', textDecoration: 'none', transition: 'color 0.2s' }}
-                onMouseEnter={e => { e.currentTarget.style.color = '#0B50D4' }}
-                onMouseLeave={e => { e.currentTarget.style.color = '#3D5A78' }}
-              >
-                {item}
-              </a>
-            ))}
-          </div>
-
-          <div className="hidden md:flex items-center gap-3">
-            <Link to="/login"
-              style={{
-                padding: '10px 22px', fontSize: 14, fontWeight: 800, borderRadius: 999,
-                color: '#0B50D4', border: '2px solid #0B50D4', textDecoration: 'none',
-                transition: 'all 0.2s',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background = '#E8EFFE' }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
-            >
-              Log In
-            </Link>
-            <Link to="/signup"
-              style={{
-                padding: '10px 22px', fontSize: 14, fontWeight: 800, borderRadius: 999,
-                background: '#0B50D4', color: '#fff', textDecoration: 'none',
-                boxShadow: '0 4px 14px rgba(11,80,212,0.3)', transition: 'all 0.2s',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background = '#0840AA' }}
-              onMouseLeave={e => { e.currentTarget.style.background = '#0B50D4' }}
-            >
-              Get Started Free
-            </Link>
-          </div>
-
-          <button className="md:hidden p-2" onClick={() => setMenuOpen(!menuOpen)} aria-label="Toggle menu"
-            style={{ color: '#0A1929' }}>
-            <div className={`w-5 h-0.5 bg-current transition-all ${menuOpen ? 'rotate-45 translate-y-1.5' : ''}`} />
-            <div className={`w-5 h-0.5 bg-current my-1 transition-all ${menuOpen ? 'opacity-0' : ''}`} />
-            <div className={`w-5 h-0.5 bg-current transition-all ${menuOpen ? '-rotate-45 -translate-y-1.5' : ''}`} />
+      <header className="lp-header">
+        <Link to="/" className="lp-logo" aria-label="HashPay Global home"><b>HashPay</b> <span>global</span></Link>
+        <div className="lp-status">
+          <span><i className="dot" />online</span>
+          <button className="lp-toggle" onClick={toggleTheme} aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}>
+            {dark ? <Sun size={16} /> : <Moon size={16} />}
           </button>
         </div>
+      </header>
 
-        {menuOpen && (
-          <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
-            className="md:hidden px-8 py-5 flex flex-col gap-4 bg-white"
-            style={{ borderTop: '1px solid #DDE6F2' }}>
-            {['Ecosystem', 'Technology', 'Security', 'Docs'].map(item => (
-              <a key={item} href="#" style={{ fontSize: 15, fontWeight: 700, color: '#3D5A78' }}>{item}</a>
-            ))}
-            <Link to="/signup" style={{ fontSize: 15, fontWeight: 800, color: '#0B50D4' }}>Get Started Free →</Link>
-          </motion.div>
-        )}
-      </nav>
-
-      {/* Hero */}
-      <main className="relative flex-1 flex flex-col items-center px-6 pt-24 pb-20">
-
-        {/* Live badge */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className="flex items-center gap-2.5 bg-white rounded-full mb-10"
-          style={{ padding: '8px 18px', border: '1px solid #DDE6F2', boxShadow: '0 1px 4px rgba(10,25,41,0.06)' }}
-        >
-          <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: '#057A4B' }} />
-          <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#057A4B' }}>
-            Live on SUI + Ethereum Mainnet
-          </span>
-        </motion.div>
-
-        {/* Logo mark */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-          style={{ marginBottom: 36 }}
-        >
-          <HashPayIcon size={96} />
-        </motion.div>
-
-        {/* Headline — bold & confident */}
-        <motion.h1
-          initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1, duration: 0.6 }}
-          style={{
-            fontSize: 'clamp(48px, 8vw, 88px)',
-            fontWeight: 900,
-            lineHeight: 1.02,
-            letterSpacing: '-0.04em',
-            textAlign: 'center',
-            color: '#0A1929',
-            marginBottom: 24,
-            maxWidth: 900,
-          }}
-        >
-          DeFi Payments{' '}
-          <span style={{
-            background: 'linear-gradient(135deg, #0B50D4 0%, #0891B2 100%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            backgroundClip: 'text',
-          }}>
-            Built for Africa.
-          </span>
-        </motion.h1>
-
-        {/* Sub-headline */}
-        <motion.p
-          initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-          transition={{ delay: 0.25, duration: 0.5 }}
-          style={{
-            fontSize: 20,
-            fontWeight: 600,
-            lineHeight: 1.6,
-            textAlign: 'center',
-            color: '#3D5A78',
-            maxWidth: 520,
-            marginBottom: 40,
-          }}
-        >
-          Swap, send, and convert crypto across chains — with direct bank settlement
-          to NGN, GHS, KES and beyond.
-        </motion.p>
-
-        {/* CTAs */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.35, duration: 0.5 }}
-          className="flex flex-wrap items-center justify-center gap-4"
-          style={{ marginBottom: 36 }}
-        >
-          <Link to="/signup"
-            className="flex items-center gap-2 rounded-full transition-all"
-            style={{
-              padding: '16px 36px',
-              fontSize: 16,
-              fontWeight: 800,
-              background: '#0B50D4',
-              color: '#fff',
-              textDecoration: 'none',
-              boxShadow: '0 6px 24px rgba(11,80,212,0.32)',
-              letterSpacing: '-0.01em',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.background = '#0840AA'; e.currentTarget.style.transform = 'translateY(-2px)' }}
-            onMouseLeave={e => { e.currentTarget.style.background = '#0B50D4'; e.currentTarget.style.transform = 'translateY(0)' }}
-          >
-            Create Free Account <ArrowRight size={18} />
-          </Link>
-          <Link to="/login"
-            className="flex items-center gap-2 rounded-full transition-all"
-            style={{
-              padding: '16px 36px',
-              fontSize: 16,
-              fontWeight: 800,
-              color: '#0B50D4',
-              border: '2px solid #0B50D4',
-              textDecoration: 'none',
-              letterSpacing: '-0.01em',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.background = '#E8EFFE' }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
-          >
-            Log In
-          </Link>
-        </motion.div>
-
-        {/* Social proof */}
-        <motion.div
-          initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-          transition={{ delay: 0.5, duration: 0.5 }}
-          className="flex items-center gap-3"
-          style={{ marginBottom: 88 }}
-        >
-          <div className="flex -space-x-2.5">
-            {['#0B50D4','#057A4B','#B45309','#7C3AED','#0891B2'].map((c, i) => (
-              <div key={i}
-                className="rounded-full flex items-center justify-center text-white"
-                style={{ width: 32, height: 32, fontSize: 11, fontWeight: 800, background: c, border: '2px solid #F0F4FA' }}>
-                {String.fromCharCode(65 + i)}
-              </div>
-            ))}
-          </div>
-          <span style={{ fontSize: 14, fontWeight: 600, color: '#7A97B4' }}>
-            Trusted by <strong style={{ color: '#0A1929', fontWeight: 900 }}>12,400+</strong> users worldwide
-          </span>
-        </motion.div>
-
-        {/* Stats */}
-        <div className="w-full flex flex-col md:flex-row gap-5" style={{ maxWidth: 860, marginBottom: 100 }}>
-          <StatCard icon={<Zap size={24} />}    label="Transaction Speed" value="297k"   sub="Transactions Per Second" delay={0.55} accent="#057A4B" />
-          <StatCard icon={<Shield size={24} />}  label="Confirmation Time"  value="<400ms" sub="End-to-end latency"       delay={0.65} accent="#0891B2" />
-          <StatCard icon={<Globe size={24} />}   label="Global Nodes"       value="1,400+" sub="Distributed worldwide"    delay={0.75} accent="#0B50D4" />
-        </div>
-
-        {/* Features section */}
-        <div className="w-full" style={{ maxWidth: 1000 }}>
-          <motion.div
-            initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.8, duration: 0.5 }}
-            className="text-center"
-            style={{ marginBottom: 48 }}
-          >
-            <div className="inline-flex items-center gap-2 rounded-full"
-              style={{ padding: '6px 16px', background: '#E8EFFE', marginBottom: 16 }}>
-              <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#0B50D4' }}>
-                Everything you need
-              </span>
-            </div>
-            <h2 style={{ fontSize: 'clamp(28px, 4vw, 40px)', fontWeight: 900, letterSpacing: '-0.03em', color: '#0A1929', lineHeight: 1.1 }}>
-              Built for the next generation<br />of African finance
-            </h2>
-          </motion.div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {features.map(({ icon: Icon, title, desc }, i) => (
-              <motion.div
-                key={title}
-                initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.9 + i * 0.07, duration: 0.4 }}
-                className="bg-white rounded-2xl cursor-default transition-all duration-200"
-                style={{ padding: '32px 28px', border: '1px solid #DDE6F2', boxShadow: '0 1px 4px rgba(10,25,41,0.05)' }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.boxShadow = '0 8px 24px rgba(10,25,41,0.1)'
-                  e.currentTarget.style.borderColor = '#C4D4E8'
-                  e.currentTarget.style.transform = 'translateY(-3px)'
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.boxShadow = '0 1px 4px rgba(10,25,41,0.05)'
-                  e.currentTarget.style.borderColor = '#DDE6F2'
-                  e.currentTarget.style.transform = 'translateY(0)'
-                }}
-              >
-                <div
-                  className="flex items-center justify-center rounded-xl"
-                  style={{ width: 48, height: 48, background: '#E8EFFE', marginBottom: 20 }}
-                >
-                  <Icon size={20} style={{ color: '#0B50D4' }} />
-                </div>
-                <div style={{ fontSize: 17, fontWeight: 800, color: '#0A1929', marginBottom: 10, letterSpacing: '-0.01em' }}>
-                  {title}
-                </div>
-                <div style={{ fontSize: 14, fontWeight: 500, color: '#3D5A78', lineHeight: 1.65 }}>
-                  {desc}
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-
-        {/* Bottom CTA / trust section */}
-        <motion.div
-          initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 1.4, duration: 0.5 }}
-          className="w-full bg-white rounded-3xl text-center"
-          style={{
-            maxWidth: 1000,
-            marginTop: 80,
-            padding: '64px 48px',
-            border: '1px solid #DDE6F2',
-            boxShadow: '0 4px 24px rgba(10,25,41,0.07)',
-          }}
-        >
-          {/* Trust badges row */}
-          <div className="flex flex-wrap items-center justify-center gap-10" style={{ marginBottom: 48 }}>
-            {[
-              { icon: <Shield size={19} style={{ color: '#057A4B' }} />, label: 'AES-256 Encryption' },
-              { icon: <Lock   size={19} style={{ color: '#0B50D4' }} />, label: 'MPC Authentication' },
-              { icon: <CheckCircle size={19} style={{ color: '#0891B2' }} />, label: 'KYC Verified' },
-              { icon: <Zap   size={19} style={{ color: '#B45309' }} />, label: 'secp256k1 Quotes' },
-            ].map(b => (
-              <div key={b.label} className="flex items-center gap-2.5" style={{ fontSize: 14, fontWeight: 700, color: '#3D5A78' }}>
-                {b.icon}{b.label}
-              </div>
-            ))}
-          </div>
-
-          <h3 style={{ fontSize: 'clamp(32px, 4vw, 48px)', fontWeight: 900, letterSpacing: '-0.03em', color: '#0A1929', marginBottom: 12, lineHeight: 1.08 }}>
-            Ready to go kinetic?
-          </h3>
-          <p style={{ fontSize: 17, fontWeight: 600, color: '#3D5A78', marginBottom: 36 }}>
-            Join 12,400+ users already using HashPay Global.
-          </p>
-          <Link to="/signup"
-            className="inline-flex items-center gap-2 rounded-full transition-all"
-            style={{
-              padding: '17px 44px',
-              fontSize: 16,
-              fontWeight: 800,
-              background: '#0B50D4',
-              color: '#fff',
-              textDecoration: 'none',
-              boxShadow: '0 6px 24px rgba(11,80,212,0.3)',
-              letterSpacing: '-0.01em',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.background = '#0840AA'; e.currentTarget.style.transform = 'translateY(-2px)' }}
-            onMouseLeave={e => { e.currentTarget.style.background = '#0B50D4'; e.currentTarget.style.transform = 'translateY(0)' }}
-          >
-            Create Free Account <ArrowRight size={18} />
-          </Link>
-        </motion.div>
-      </main>
-
-      {/* Footer */}
-      <footer className="bg-white" style={{ borderTop: '1px solid #DDE6F2', marginTop: 24 }}>
-        <div className="max-w-[1200px] mx-auto px-8 py-14">
-          <div className="flex flex-col md:flex-row items-start justify-between gap-12" style={{ marginBottom: 40 }}>
-            <div>
-              <HashPayLogo size={34} />
-              <p style={{ fontSize: 14, fontWeight: 500, color: '#7A97B4', maxWidth: 220, lineHeight: 1.65, marginTop: 12 }}>
-                Fast, secure, decentralised DeFi payments on SUI + Ethereum.
+      <div className="lp-body">
+        {/* ── Left: the pitch, top to bottom ── */}
+        <main className="lp-left">
+          <div className="lp-col">
+            <section>
+              <div className="lp-label">Live on Sui and Ethereum mainnet</div>
+              <h1>DeFi payments built for Africa.</h1>
+              <p className="lp-lede">
+                Swap, send and convert crypto across chains, with direct bank settlement to NGN, GHS, KES and beyond.
               </p>
-            </div>
-            <div className="flex gap-16">
-              {[
-                { heading: 'Product', links: ['Swap', 'Pools', 'Portfolio', 'Offramp'] },
-                { heading: 'Company', links: ['About', 'Blog', 'Careers', 'Press'] },
-                { heading: 'Legal',   links: ['Privacy', 'Terms', 'Security', 'Audit'] },
-              ].map(col => (
-                <div key={col.heading}>
-                  <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#A8BDD4', marginBottom: 16 }}>
-                    {col.heading}
-                  </div>
-                  <div className="flex flex-col gap-3">
-                    {col.links.map(l => (
-                      <a key={l} href="#"
-                        style={{ fontSize: 14, fontWeight: 600, color: '#7A97B4', textDecoration: 'none', transition: 'color 0.2s' }}
-                        onMouseEnter={e => { e.currentTarget.style.color = '#0B50D4' }}
-                        onMouseLeave={e => { e.currentTarget.style.color = '#7A97B4' }}
-                      >
-                        {l}
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+            </section>
 
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4 pt-6" style={{ borderTop: '1px solid #DDE6F2' }}>
-            <p style={{ fontSize: 13, fontWeight: 500, color: '#A8BDD4' }}>
-              © 2026 HashPay Global · All rights reserved
-            </p>
-            <div className="flex items-center gap-6">
-              {['Privacy', 'Terms'].map(l => (
-                <a key={l} href="#" style={{ fontSize: 13, fontWeight: 700, color: '#7A97B4', textDecoration: 'none', transition: 'color 0.2s' }}
-                  onMouseEnter={e => { e.currentTarget.style.color = '#0B50D4' }}
-                  onMouseLeave={e => { e.currentTarget.style.color = '#7A97B4' }}>
-                  {l}
-                </a>
-              ))}
-              <a href="https://twitter.com" target="_blank" rel="noopener noreferrer"
-                style={{ color: '#7A97B4', transition: 'color 0.2s' }} aria-label="Twitter"
-                onMouseEnter={e => { e.currentTarget.style.color = '#0B50D4' }}
-                onMouseLeave={e => { e.currentTarget.style.color = '#7A97B4' }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-                </svg>
-              </a>
-              <a href="https://github.com" target="_blank" rel="noopener noreferrer"
-                style={{ color: '#7A97B4', transition: 'color 0.2s' }} aria-label="GitHub"
-                onMouseEnter={e => { e.currentTarget.style.color = '#0B50D4' }}
-                onMouseLeave={e => { e.currentTarget.style.color = '#7A97B4' }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
-                </svg>
-              </a>
-            </div>
+            <section>
+              <div className="lp-btnrow">
+                <Link to="/signup" className="lp-btn solid">Create free account</Link>
+                <Link to="/login" className="lp-btn">Log in</Link>
+              </div>
+              <p className="lp-label" style={{ marginTop: 12, marginBottom: 0 }}>
+                Trusted by 12,400+ users worldwide
+              </p>
+            </section>
+
+            <section>
+              <div className="lp-label"><span>Settle to</span><span>{CURRENCIES.length} currencies</span></div>
+              <div className="lp-chips" role="group" aria-label="Settlement currency">
+                {CURRENCIES.map(c => (
+                  <button key={c.code} className="lp-chip" aria-pressed={c.code === currency.code} onClick={() => setCurrency(c)}>
+                    {c.code}
+                  </button>
+                ))}
+              </div>
+              <p className="lp-note">
+                <b>{currency.name}</b>
+                <small>{currency.note}</small>
+              </p>
+              <div className="lp-pills">
+                {['Bank transfer', 'KYC-gated', 'Minutes, not days'].map(t => <span key={t} className="lp-pill">{t}</span>)}
+              </div>
+            </section>
+
+            <section>
+              <div className="lp-label">What you get</div>
+              <div className="lp-grid">
+                {FEATURES.map(f => (
+                  <div key={f.title} className="lp-cell">
+                    <b>{f.title}</b>
+                    <span>{f.desc}</span>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section>
+              <div className="lp-label">Network</div>
+              <div className="lp-stats">
+                {STATS.map(s => (
+                  <div key={s.label} className="lp-stat">
+                    <b className={s.tone === 'green' ? 'lp-green' : undefined}>{s.value}</b>
+                    <span>{s.label}</span>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section>
+              <div className="lp-label">Security</div>
+              <div className="lp-box">
+                <ul>
+                  {SECURITY.map(s => <li key={s}>{s}<span>active</span></li>)}
+                </ul>
+              </div>
+            </section>
+
+            <section>
+              <h2 style={{ marginBottom: 12 }}>Ready to move money?</h2>
+              <Link to="/signup" className="lp-btn solid">Create free account</Link>
+            </section>
           </div>
-        </div>
+        </main>
+
+        {/* ── Right: live rate board (the "queue") ── */}
+        <aside className="lp-right" aria-label="Live rates">
+          <div className="lp-rightcol">
+            <h2>Live rates</h2>
+
+            <div className="lp-counters">
+              <div><b className="lp-green">{live}</b>live</div>
+              <div><b className={missing > 0 ? 'lp-red' : undefined}>{missing}</b>unavailable</div>
+              <div><b>{ngn ? Math.round(ngn).toLocaleString('en-NG') : '—'}</b>NGN per USD</div>
+            </div>
+
+            <button className="lp-btn" onClick={loadRates} disabled={refreshing}>
+              {refreshing ? 'Refreshing…' : 'Refresh now'}
+            </button>
+
+            <div className="lp-list" aria-live="polite">
+              {state === 'loading' && <p className="lp-empty">Loading rates…</p>}
+              {state === 'error' && live === 0 && (
+                <p className="lp-empty">Rates are unavailable right now. Retrying every 30 seconds.</p>
+              )}
+              {COINS.map(c => {
+                const price = rates[c.symbol]
+                if (price === undefined) return null
+                return (
+                  <div className="lp-item" key={c.symbol}>
+                    <div className="lp-bar" />
+                    <div className="main">
+                      <div className="val">${fmtUsd(price)}</div>
+                      <div className="sub">{c.symbol} · {c.name}</div>
+                      {ngn && (
+                        <div className="mono">₦{Math.round(price * ngn).toLocaleString('en-NG')}</div>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            {updated && (
+              <p className="lp-label" style={{ marginBottom: 0 }}>
+                Updated {updated.toLocaleTimeString()}
+              </p>
+            )}
+          </div>
+        </aside>
+      </div>
+
+      <footer className="lp-footer">
+        <span>© 2026 HashPay Global. All rights reserved.</span>
+        <nav aria-label="Footer">
+          {['Privacy', 'Terms', 'Security', 'Audit', 'Docs'].map(l => <a key={l} href="#">{l}</a>)}
+        </nav>
       </footer>
     </div>
   )
