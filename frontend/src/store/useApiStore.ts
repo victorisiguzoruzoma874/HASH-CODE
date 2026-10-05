@@ -153,7 +153,7 @@ export const useApiStore = create<ApiState>((set) => ({
 
   getConvertQuote: async (asset, amount) => {
     try {
-      const quote = await escrowApi.getQuote({ asset, amount, targetCurrency: 'NGN' })
+      const quote = await escrowApi.getQuote({ asset, amountIn: amount, currencyOut: 'NGN' })
       set({ convertQuote: quote })
     } catch {
       // silently fail — UI shows stale quote

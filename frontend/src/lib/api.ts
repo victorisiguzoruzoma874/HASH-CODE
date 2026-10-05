@@ -55,8 +55,8 @@ export interface SwapQuote {
 
 export interface ConvertQuote {
   asset:          string
-  amount:         number
-  targetCurrency: string
+  amountIn:       number
+  currencyOut:    string
   rate:           number
   gross:          number
   fee:            number
@@ -172,7 +172,7 @@ export const escrowApi = {
     return get<{ order: EscrowOrder }>(`/escrow/orders/${id}`)
   },
 
-  getQuote: (body: { asset: string; amountIn?: number; amount?: number; targetCurrency?: string; currencyOut?: string }) => {
+  getQuote: (body: { asset: string; amountIn: number; currencyOut?: string }) => {
     return post<ConvertQuote>('/escrow/quote', body)
   },
 

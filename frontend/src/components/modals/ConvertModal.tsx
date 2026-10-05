@@ -59,7 +59,7 @@ export const ConvertModal: React.FC<ConvertModalProps> = ({ isOpen, onClose }) =
     if (!isOpen || !n || n <= 0) { setQuote(null); setQuoteError(''); return }
     let cancelled = false
     setQuoteLoading(true); setQuoteError('')
-    escrowApi.getQuote({ asset: asset.symbol, amount: n, targetCurrency: 'NGN' })
+    escrowApi.getQuote({ asset: asset.symbol, amountIn: n, currencyOut: 'NGN' })
       .then(q => { if (!cancelled) setQuote(q) })
       .catch(e => { if (!cancelled) { setQuote(null); setQuoteError(e?.message ?? 'Could not get a quote. Try again.') } })
       .finally(() => { if (!cancelled) setQuoteLoading(false) })
@@ -133,6 +133,11 @@ export const ConvertModal: React.FC<ConvertModalProps> = ({ isOpen, onClose }) =
               </div>
             )}
             {quoteError && <p className="dash-red" style={{ fontSize: 13, marginTop: 8 }}>{quoteError}</p>}
+            {quote && !quote.signed && (
+              <p className="dash-red" style={{ fontSize: 13, marginTop: 8 }}>
+                This quote is not signed by the server, so the escrow contract would reject a deposit.
+              </p>
+            )}
           </div>
         </div>
 
@@ -170,7 +175,7 @@ export const ConvertModal: React.FC<ConvertModalProps> = ({ isOpen, onClose }) =
 
         <div className="dash-notice">
           <b>Deposits are not open yet.</b> You can check a live quote and verify your bank account here.
-          Sending crypto to escrow will open once wallet signing is connected, so no money moves from this screen.
+          Sending crypto to escrow needs the Sui escrow contract deployed and configured on the server, so no money moves from this screen.
         </div>
 
         <button className="lp-btn solid" disabled>
