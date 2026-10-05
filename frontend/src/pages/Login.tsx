@@ -1,10 +1,7 @@
 import React, { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { Mail, Lock, Wallet, Eye, EyeOff, Shield, Key, AlertCircle } from 'lucide-react'
-import { Spinner } from '../components/ui/Spinner'
 import { useCurrentAccount, useConnectWallet, useWallets, useSignPersonalMessage } from '@mysten/dapp-kit'
-import { HashPayLogo, HashPayIcon } from '../components/ui/HashPayLogo'
+import { FlatShell } from '../components/ui/FlatShell'
 import { useApiStore } from '../store/useApiStore'
 import { authApi, saveToken } from '../lib/api'
 
@@ -77,209 +74,86 @@ export const Login: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: '#EEF3FB' }}>
-
-      {/* Full-width Nav */}
-      <nav className="w-full bg-white" style={{ borderBottom: '1px solid #DDE6F2', boxShadow: '0 1px 3px rgba(10,25,41,0.06)' }}>
-        <div className="max-w-[1200px] mx-auto px-8 h-[68px] flex items-center justify-between">
-          <Link to="/"><HashPayLogo size={34} /></Link>
-          <div className="flex items-center gap-1 p-1 rounded-full" style={{ background: '#EEF3FB', border: '1px solid #DDE6F2' }}>
-            <span className="px-5 py-2 rounded-full text-[13px] font-bold" style={{ background: '#0B50D4', color: '#fff' }}>
-              Log In
-            </span>
-            <Link to="/signup" className="px-5 py-2 rounded-full text-[13px] font-bold transition-colors" style={{ color: '#7A97B4' }}
-              onMouseEnter={e => { e.currentTarget.style.color = '#0B50D4' }}
-              onMouseLeave={e => { e.currentTarget.style.color = '#7A97B4' }}>
-              Sign Up
-            </Link>
-          </div>
-        </div>
-      </nav>
-
-      {/* Centered card */}
-      <div className="flex-1 flex items-center justify-center px-4 py-16">
-        <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45, ease: 'easeOut' }}
-          className="w-full"
-          style={{ maxWidth: 480 }}
-        >
-          <div
-            className="bg-white rounded-3xl"
-            style={{
-              padding: '48px 44px',
-              boxShadow: '0 4px 24px rgba(10,25,41,0.09), 0 1px 4px rgba(10,25,41,0.05)',
-              border: '1px solid #DDE6F2',
-            }}
-          >
-            {/* Logo + heading */}
-            <div className="text-center mb-10">
-              <div className="flex justify-center mb-5">
-                <HashPayIcon size={56} />
+    <FlatShell>
+      <div className="lp-body">
+        <main className="lp-left">
+          <div className="lp-col" style={{ maxWidth: 520 }}>
+            <section>
+              <div className="lp-switch" style={{ marginBottom: 28 }}>
+                <span aria-current="page">Log in</span>
+                <Link to="/signup">Sign up</Link>
               </div>
-              <h1 style={{ fontSize: 26, fontWeight: 900, color: '#0A1929', marginBottom: 8 }}>
-                Welcome back
-              </h1>
-              <p style={{ fontSize: 15, fontWeight: 500, color: '#7A97B4' }}>
-                Log in to your HashPay account
-              </p>
-            </div>
+              <h1 style={{ fontSize: 'clamp(30px, 4vw, 40px)' }}>Welcome back</h1>
+              <p className="lp-lede">Log in to your HashPay account.</p>
+            </section>
 
-            {/* Error */}
-            {error && (
-              <motion.div
-                initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
-                className="flex items-start gap-3 rounded-2xl mb-6"
-                style={{ padding: '14px 16px', background: '#FDECEA', border: '1px solid rgba(197,32,43,0.18)' }}
-              >
-                <AlertCircle size={15} style={{ color: '#C5202B', flexShrink: 0, marginTop: 1 }} />
-                <p style={{ fontSize: 13, fontWeight: 600, color: '#C5202B' }}>{error}</p>
-              </motion.div>
-            )}
+            {error && <div className="lp-error" role="alert">{error}</div>}
 
-            {/* Wallet CTA */}
-            <motion.button
-              whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}
-              onClick={handleWalletConnect}
-              disabled={walletConnecting}
-              className="w-full flex items-center justify-center gap-3 rounded-full font-bold transition-all disabled:opacity-60"
-              style={{
-                padding: '15px 24px',
-                fontSize: 15,
-                background: '#057A4B',
-                color: '#fff',
-                boxShadow: '0 4px 16px rgba(5,122,75,0.22)',
-                marginBottom: 24,
-              }}
-              onMouseEnter={e => { if (!walletConnecting) e.currentTarget.style.background = '#046040' }}
-              onMouseLeave={e => { e.currentTarget.style.background = '#057A4B' }}
-            >
-              {walletConnecting
-                ? <><Spinner size={17} />Connecting…</>
-                : <><Wallet size={18} />{account ? `Connected: ${account.address.slice(0, 8)}…` : 'Connect Sui Wallet'}</>
-              }
-            </motion.button>
+            <section>
+              <div className="lp-label"><span>Wallet</span></div>
+              <button type="button" className="lp-btn" onClick={handleWalletConnect} disabled={walletConnecting}>
+                {walletConnecting
+                  ? 'Connecting…'
+                  : account ? `Connected: ${account.address.slice(0, 8)}…` : 'Connect Sui wallet'}
+              </button>
+            </section>
 
-            {/* Divider */}
-            <div className="flex items-center gap-4" style={{ marginBottom: 24 }}>
-              <div className="flex-1 h-px" style={{ background: '#DDE6F2' }} />
-              <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', color: '#A8BDD4' }}>OR</span>
-              <div className="flex-1 h-px" style={{ background: '#DDE6F2' }} />
-            </div>
+            <div className="lp-divider">or use email</div>
 
-            {/* Email form */}
-            <form onSubmit={handleEmailLogin}>
-              <div style={{ marginBottom: 16 }}>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#3D5A78', marginBottom: 8 }}>
-                  Email address
+            <form className="lp-auth-form" onSubmit={handleEmailLogin}>
+              <div className="lp-field">
+                <label className="lp-label" htmlFor="email">Email address</label>
+                <input
+                  id="email" className="lp-input" type="email" autoComplete="email" required
+                  value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com"
+                />
+              </div>
+
+              <div className="lp-field">
+                <label className="lp-label" htmlFor="password">
+                  <span>Password</span>
+                  <a href="#" className="lp-link">Forgot password?</a>
                 </label>
-                <div className="relative">
-                  <Mail size={15} className="absolute top-1/2 -translate-y-1/2" style={{ left: 16, color: '#A8BDD4' }} />
+                <div className="lp-inputwrap">
                   <input
-                    type="email" value={email} onChange={e => setEmail(e.target.value)} required
-                    placeholder="you@example.com"
-                    style={{
-                      width: '100%',
-                      padding: '14px 16px 14px 44px',
-                      fontSize: 14,
-                      fontWeight: 500,
-                      borderRadius: 12,
-                      border: '1.5px solid #C4D4E8',
-                      background: '#F8FAFD',
-                      color: '#0A1929',
-                      outline: 'none',
-                    }}
-                    onFocus={e => { e.currentTarget.style.borderColor = '#0B50D4'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(11,80,212,0.1)' }}
-                    onBlur={e => { e.currentTarget.style.borderColor = '#C4D4E8'; e.currentTarget.style.boxShadow = 'none' }}
+                    id="password" className="lp-input" autoComplete="current-password" required
+                    type={showPass ? 'text' : 'password'}
+                    value={password} onChange={e => setPassword(e.target.value)} placeholder="Enter your password"
                   />
-                </div>
-              </div>
-
-              <div style={{ marginBottom: 24 }}>
-                <div className="flex items-center justify-between" style={{ marginBottom: 8 }}>
-                  <label style={{ fontSize: 13, fontWeight: 700, color: '#3D5A78' }}>Password</label>
-                  <a href="#" style={{ fontSize: 13, fontWeight: 700, color: '#0B50D4', textDecoration: 'none' }}>Forgot password?</a>
-                </div>
-                <div className="relative">
-                  <Lock size={15} className="absolute top-1/2 -translate-y-1/2" style={{ left: 16, color: '#A8BDD4' }} />
-                  <input
-                    type={showPass ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} required
-                    placeholder="Enter your password"
-                    style={{
-                      width: '100%',
-                      padding: '14px 48px 14px 44px',
-                      fontSize: 14,
-                      fontWeight: 500,
-                      borderRadius: 12,
-                      border: '1.5px solid #C4D4E8',
-                      background: '#F8FAFD',
-                      color: '#0A1929',
-                      outline: 'none',
-                    }}
-                    onFocus={e => { e.currentTarget.style.borderColor = '#0B50D4'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(11,80,212,0.1)' }}
-                    onBlur={e => { e.currentTarget.style.borderColor = '#C4D4E8'; e.currentTarget.style.boxShadow = 'none' }}
-                  />
-                  <button type="button" onClick={() => setShowPass(!showPass)}
-                    className="absolute top-1/2 -translate-y-1/2" style={{ right: 16, color: '#A8BDD4' }}>
-                    {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                  <button type="button" className="lp-reveal" onClick={() => setShowPass(s => !s)}
+                    aria-label={showPass ? 'Hide password' : 'Show password'}>
+                    {showPass ? 'Hide' : 'Show'}
                   </button>
                 </div>
               </div>
 
-              <motion.button
-                whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}
-                type="submit" disabled={authLoading}
-                className="w-full flex items-center justify-center gap-2 rounded-full font-bold transition-all disabled:opacity-60"
-                style={{
-                  padding: '15px 24px',
-                  fontSize: 15,
-                  background: '#0B50D4',
-                  color: '#fff',
-                  boxShadow: '0 4px 16px rgba(11,80,212,0.28)',
-                  marginBottom: 20,
-                }}
-                onMouseEnter={e => { if (!authLoading) e.currentTarget.style.background = '#0840AA' }}
-                onMouseLeave={e => { e.currentTarget.style.background = '#0B50D4' }}
-              >
-                {authLoading ? <><Spinner size={17} />Signing in…</> : 'Log In'}
-              </motion.button>
+              <button type="submit" className="lp-btn solid" disabled={authLoading}>
+                {authLoading ? 'Signing in…' : 'Log in'}
+              </button>
             </form>
 
-            <p className="text-center" style={{ fontSize: 14, fontWeight: 600, color: '#7A97B4' }}>
-              Don't have an account?{' '}
-              <Link to="/signup" style={{ color: '#0B50D4', fontWeight: 800, textDecoration: 'none' }}>
-                Create one free
-              </Link>
+            <p className="lp-lede" style={{ fontSize: 14 }}>
+              No account yet? <Link to="/signup" className="lp-link" style={{ color: 'var(--ink)' }}>Create one free</Link>
             </p>
+          </div>
+        </main>
 
-            {/* Trust badges */}
-            <div className="flex items-center justify-center gap-8" style={{ marginTop: 28, paddingTop: 24, borderTop: '1px solid #EEF3FB' }}>
-              {[
-                { icon: <Shield size={13} style={{ color: '#057A4B' }} />, label: 'AES-256 Encrypted' },
-                { icon: <Key    size={13} style={{ color: '#0B50D4' }} />, label: 'MPC Auth' },
-              ].map(b => (
-                <div key={b.label} className="flex items-center gap-2" style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#A8BDD4' }}>
-                  {b.icon}{b.label}
-                </div>
-              ))}
+        <aside className="lp-right" aria-label="About your account">
+          <div className="lp-rightcol">
+            <h2>Your keys, your funds</h2>
+            <p className="lp-lede">HashPay is non-custodial. We never hold your assets.</p>
+            <div>
+              <div className="lp-label">Security</div>
+              <div className="lp-box">
+                <ul>
+                  {['AES-256 encryption', 'MPC authentication', 'KYC verified', 'secp256k1 signed quotes']
+                    .map(s => <li key={s}>{s}<span>active</span></li>)}
+                </ul>
+              </div>
             </div>
           </div>
-        </motion.div>
+        </aside>
       </div>
-
-      <footer className="w-full bg-white" style={{ borderTop: '1px solid #DDE6F2' }}>
-        <div className="max-w-[1200px] mx-auto px-8 py-5 flex flex-col md:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-6">
-            {['Privacy Policy', 'Terms of Service', 'Security Audit'].map(l => (
-              <a key={l} href="#" style={{ fontSize: 12, fontWeight: 600, color: '#A8BDD4', textDecoration: 'none' }}
-                onMouseEnter={e => { e.currentTarget.style.color = '#0B50D4' }}
-                onMouseLeave={e => { e.currentTarget.style.color = '#A8BDD4' }}>{l}</a>
-            ))}
-          </div>
-          <span style={{ fontSize: 12, fontWeight: 500, color: '#A8BDD4' }}>© 2026 HashPay Global</span>
-        </div>
-      </footer>
-    </div>
+    </FlatShell>
   )
 }
