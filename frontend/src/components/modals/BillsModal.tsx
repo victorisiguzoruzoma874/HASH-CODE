@@ -92,9 +92,20 @@ export const BillsModal: React.FC<BillsModalProps> = ({ isOpen, onClose }) => {
 
   const billers = useMemo(() => {
     const seen = new Map<string, string>()
-    items.forEach(i => { if (!seen.has(i.billerCode)) seen.set(i.billerCode, i.billerName) })
+    items.forEach(i => {
+      let label = i.billerName
+      if (category === 'airtime' || category === 'data') {
+        const name = i.billerName.trim().toUpperCase()
+        if (/\b(9MOBILE|ETISALAT)\b/.test(name)) label = '9mobile'
+        else if (/\bAIRTEL\b/.test(name)) label = 'Airtel'
+        else if (/\bGLO\b/.test(name)) label = 'Glo'
+        else if (/\bMTN\b/.test(name) || (category === 'airtime' && name === 'AIRTIME')) label = 'MTN'
+        else return
+      }
+      if (!seen.has(i.billerCode)) seen.set(i.billerCode, label)
+    })
     return Array.from(seen, ([value, label]) => ({ value, label }))
-  }, [items])
+  }, [items, category])
 
   const products = useMemo(() => items.filter(i => i.billerCode === billerCode), [items, billerCode])
 
