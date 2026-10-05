@@ -6,7 +6,7 @@ import { create } from 'zustand'
  * by the component that shows it.
  */
 
-export type ModalType = 'send' | 'receive' | 'scan' | 'convert' | null
+export type ModalType = 'send' | 'receive' | 'scan' | 'convert' | 'bills' | null
 
 interface UIState {
   activeModal: ModalType

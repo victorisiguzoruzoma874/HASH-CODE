@@ -6,6 +6,7 @@ import { SendModal } from '../components/modals/SendModal'
 import { ReceiveModal } from '../components/modals/ReceiveModal'
 import { ScanModal } from '../components/modals/ScanModal'
 import { ConvertModal } from '../components/modals/ConvertModal'
+import { BillsModal } from '../components/modals/BillsModal'
 import { useStore } from '../store/useStore'
 import { useApiStore } from '../store/useApiStore'
 import { DashboardHome } from '../components/dashboard/DashboardHome'
@@ -57,6 +58,7 @@ export const Dashboard: React.FC = () => {
       <ReceiveModal  isOpen={activeModal === 'receive'}  onClose={closeModal} />
       <ScanModal     isOpen={activeModal === 'scan'}     onClose={closeModal} />
       <ConvertModal  isOpen={activeModal === 'convert'}  onClose={closeModal} />
+      <BillsModal    isOpen={activeModal === 'bills'}    onClose={closeModal} />
     </div>
   )
 }

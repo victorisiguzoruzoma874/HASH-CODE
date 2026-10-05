@@ -8,6 +8,7 @@ import { authRouter }     from './routes/auth'
 import { swapRouter }     from './routes/swap'
 import { escrowRouter }   from './routes/escrow'
 import { payoutRouter }   from './routes/payout'
+import { billsRouter }    from './routes/bills'
 import { priceRouter }    from './routes/price'
 import { kycRouter }      from './routes/kyc'
 import { webhookRouter }  from './routes/webhook'
@@ -88,6 +89,7 @@ app.use(`${API}/airtime`, (_req, res) => {
   res.status(503).json({ error: 'Airtime top-up is not available.', code: 'AIRTIME_DISABLED' })
 })
 app.use(`${API}/price`,   priceRouter)
+app.use(`${API}/bills`,   billsRouter)
 app.use(`${API}/kyc`,     kycRouter)
 app.use(`${API}/wallet`,  walletRouter)
 app.use(`${API}/webhook`, webhookRouter)

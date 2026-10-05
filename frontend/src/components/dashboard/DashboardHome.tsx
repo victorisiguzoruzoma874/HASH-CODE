@@ -11,6 +11,7 @@ const actions: { id: Exclude<ModalType, null>; label: string }[] = [
   { id: 'receive', label: 'Receive' },
   { id: 'scan',    label: 'Scan' },
   { id: 'convert', label: 'Convert to cash' },
+  { id: 'bills',   label: 'Utilities' },
 ]
 
 const LIVE_ASSETS = [

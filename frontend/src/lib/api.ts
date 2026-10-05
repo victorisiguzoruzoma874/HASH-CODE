@@ -313,6 +313,42 @@ export const walletApi = {
   },
 }
 
+// ── Bills (airtime, data, electricity) ────────────────────────
+
+export type BillCategory = 'airtime' | 'data' | 'electricity'
+
+export interface BillItem {
+  category:   BillCategory
+  billerCode: string
+  billerName: string
+  itemCode:   string
+  name:       string
+  labelName:  string
+  amount:     number   // 0 means the user chooses the amount
+  fee:        number
+}
+
+export interface BillResult {
+  status:      'COMPLETED' | 'PENDING'
+  reference:   string
+  amount:      number
+  fee:         number
+  total:       number
+  description: string
+  token:       string | null
+}
+
+export const billsApi = {
+  getItems: (category: BillCategory) =>
+    get<{ items: BillItem[] }>(`/bills/items?category=${category}`),
+
+  validate: (body: { category: BillCategory; billerCode: string; itemCode: string; customer: string }) =>
+    post<{ name: string | null; valid: boolean }>('/bills/validate', body),
+
+  pay: (body: { category: BillCategory; billerCode: string; itemCode: string; customer: string; amount?: number }) =>
+    post<BillResult>('/bills/pay', body),
+}
+
 // ── Token helpers ─────────────────────────────────────────────
 
 export function saveToken(token: string): void  { localStorage.setItem('hp_token', token) }

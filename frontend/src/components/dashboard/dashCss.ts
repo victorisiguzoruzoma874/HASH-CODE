@@ -99,8 +99,7 @@ export const DASH_CSS = `
 .dash-sum .v { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 16px; font-weight: 700; }
 @media (max-width: 700px) { .dash-sum { grid-template-columns: 1fr; } .dash-sum > div { border-right: 0; border-bottom: 1px solid var(--line); } .dash-sum > div:last-child { border-bottom: 0; } }
 
-.dash-actions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 16px; }
-@media (max-width: 700px) { .dash-actions { grid-template-columns: repeat(2, 1fr); } }
+.dash-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; padding: 16px; }
 .dash-act {
   min-height: 56px; font: inherit; font-weight: 600; background: var(--field); color: var(--ink);
   border: 1px solid var(--line); border-radius: 0; cursor: pointer;
