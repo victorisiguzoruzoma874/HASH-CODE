@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { useStore } from '../../store/useStore'
 import { useApiStore } from '../../store/useApiStore'
-import { SwapPanel } from './SwapPanel'
 import { LivePriceTicker } from './LivePriceTicker'
 import { priceApi, walletApi, type WalletBalance, type WalletTransaction } from '../../lib/api'
 import type { ModalType } from '../../store/useStore'
@@ -196,8 +195,6 @@ export const DashboardHome: React.FC = () => {
 
         {/* ── Side column ── */}
         <div className="dash-stack">
-          <SwapPanel />
-
           <section className="dash-card" aria-label="Live prices">
             <header>
               <h2>Live prices</h2>
