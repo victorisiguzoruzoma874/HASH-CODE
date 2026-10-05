@@ -298,6 +298,10 @@ export const walletApi = {
     return get<{ data: { fullName: string; accountNumber: string } }>(`/wallet/lookup/${accountNumber}`)
   },
 
+  createVirtualAccount: () => {
+    return post<{ message: string; data: { accountNumber: string } }>('/wallet/create-virtual-account', {})
+  },
+
   getTransactions: (page = 1, pageSize = 20) => {
     return get<{ data: { transactions: WalletTransaction[]; total: number; page: number; pageSize: number } }>(
       `/wallet/transactions?page=${page}&pageSize=${pageSize}`

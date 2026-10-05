@@ -1,11 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import {
-  X, Image, History, ZoomIn, QrCode, Wallet, BarChart2,
-  Shield, CheckCircle2, AlertCircle, Loader2, ZoomOut,
-} from 'lucide-react'
 import jsQR from 'jsqr'
-import { HashPayIcon } from '../ui/HashPayLogo'
 
 interface ScanModalProps {
   isOpen: boolean
@@ -185,250 +179,117 @@ export const ScanModal: React.FC<ScanModalProps> = ({ isOpen, onClose, onResult 
   const isHashPayAccount = result && /^\d{10}$/.test(result)
   const isCryptoAddress  = result && /^(0x[a-fA-F0-9]{40}|[a-zA-Z0-9]{32,}$)/.test(result)
 
+  if (!isOpen) return null
+
+  const statusText = cameraState === 'active' ? 'Camera on' : cameraState === 'requesting' ? 'Starting camera…' : 'Camera off'
+  const frameHidden = !!result || cameraState === 'denied' || cameraState === 'unsupported' || cameraState === 'error'
+
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
-          className="fixed inset-0 z-50 bg-[#0B0F1A] flex flex-col"
-        >
-          {/* Top bar */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.08]">
-            <div className="flex items-center gap-2.5">
-              <HashPayIcon size={32} />
-              <span className="text-[16px] font-semibold text-white">Scan QR Code</span>
-            </div>
-            <motion.button
-              whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
-              onClick={onClose}
-              className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-all"
-            >
-              <X size={18} />
-            </motion.button>
+    <div className="dash-modal-wrap" role="dialog" aria-modal="true" aria-label="Scan QR code" style={{ padding: 0 }}>
+      <div className="dash-modal" style={{ maxWidth: 'none', height: '100vh', maxHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+        <div className="dash-modal-head">
+          <div>
+            <h2>Scan QR code</h2>
+            <p>Scan a HashPay account or a wallet address.</p>
           </div>
+          <button className="lp-btn small" onClick={onClose}>Close</button>
+        </div>
 
-          {/* Main content */}
-          <div className="flex-1 flex relative overflow-hidden">
+        <div className="dash-modal-body" style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
 
-            {/* Left sidebar */}
-            <div className="w-14 flex flex-col items-center gap-4 py-6 border-r border-white/[0.08]">
-              {[
-                { icon: QrCode,    active: true },
-                { icon: Wallet,    active: false },
-                { icon: BarChart2, active: false },
-              ].map(({ icon: Icon, active }, i) => (
-                <button key={i}
-                  className={`w-9 h-9 rounded-[10px] flex items-center justify-center transition-all ${
-                    active ? 'bg-[#39FF14]/15 text-[#39FF14]' : 'text-[#4B5563] hover:text-[#94A3B8]'
-                  }`}
-                >
-                  <Icon size={18} />
-                </button>
-              ))}
+          {cameraState === 'denied' && (
+            <div className="dash-form" style={{ maxWidth: 360, textAlign: 'center' }}>
+              <div className="lp-error">Camera access is blocked. Allow the camera in your browser settings, then try again.</div>
+              <button className="lp-btn" onClick={startCamera}>Try again</button>
             </div>
+          )}
 
-            {/* Camera area */}
-            <div className="flex-1 flex flex-col items-center justify-center relative bg-[#0B0F1A] p-8">
+          {cameraState === 'unsupported' && (
+            <div className="lp-error" style={{ maxWidth: 360 }}>
+              This browser can't open the camera. Upload a photo of the QR code instead.
+            </div>
+          )}
 
-              {/* ── Error states (shown instead of camera frame) ── */}
-              {cameraState === 'denied' && (
-                <div className="flex flex-col items-center gap-4 text-center max-w-xs">
-                  <div className="w-14 h-14 rounded-full bg-red-500/10 flex items-center justify-center">
-                    <AlertCircle size={28} className="text-red-400" />
-                  </div>
-                  <div>
-                    <p className="text-[15px] font-bold text-white mb-1">Camera Access Denied</p>
-                    <p className="text-[12px] text-[#94A3B8]">Enable camera permission in your browser settings, then try again.</p>
-                  </div>
-                  <button onClick={startCamera}
-                    className="px-5 py-2.5 rounded-full text-[13px] font-bold bg-[#39FF14]/10 text-[#39FF14] border border-[#39FF14]/30 hover:bg-[#39FF14]/20 transition-all">
-                    Try Again
-                  </button>
-                </div>
-              )}
+          {cameraState === 'error' && (
+            <div className="dash-form" style={{ maxWidth: 360, textAlign: 'center' }}>
+              <div className="lp-error">The camera could not start. Close other apps that use it, then try again.</div>
+              <button className="lp-btn" onClick={startCamera}>Try again</button>
+            </div>
+          )}
 
-              {cameraState === 'unsupported' && (
-                <div className="flex flex-col items-center gap-4 text-center max-w-xs">
-                  <AlertCircle size={36} className="text-yellow-400" />
-                  <p className="text-[14px] text-[#94A3B8]">Camera not supported. Use "Upload from Gallery" instead.</p>
-                </div>
-              )}
-
-              {/* ── Camera frame — always in DOM so videoRef is always attached ── */}
-              <div className={`relative w-full max-w-[400px] aspect-square ${result || cameraState === 'denied' || cameraState === 'unsupported' || cameraState === 'error' ? 'hidden' : ''}`}>
-
-                {/* Requesting overlay */}
-                {cameraState === 'requesting' && (
-                  <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-[#050810] rounded-[20px]">
-                    <Loader2 size={32} className="animate-spin text-[#39FF14]" />
-                    <p className="text-[13px] text-[#94A3B8]">Starting camera…</p>
-                  </div>
-                )}
-
-                <video
-                  ref={videoRef}
-                  autoPlay playsInline muted
-                  className="w-full h-full rounded-[20px] object-cover bg-[#050810]"
-                  style={{ transform: `scale(${zoom})`, transition: 'transform 0.2s' }}
-                />
-                {/* Canvas used only for pixel analysis — invisible */}
-                <canvas ref={canvasRef} style={{ display: 'none' }} />
-
-                {/* Corner brackets */}
-                <div className="absolute inset-0 pointer-events-none">
-                  <div className="absolute top-3 left-3 w-8 h-8 border-[#39FF14] rounded-tl-[6px]"
-                    style={{ borderTopWidth: 3, borderLeftWidth: 3 }} />
-                  <div className="absolute top-3 right-3 w-8 h-8 border-[#39FF14] rounded-tr-[6px]"
-                    style={{ borderTopWidth: 3, borderRightWidth: 3 }} />
-                  <div className="absolute bottom-3 left-3 w-8 h-8 border-[#39FF14] rounded-bl-[6px]"
-                    style={{ borderBottomWidth: 3, borderLeftWidth: 3 }} />
-                  <div className="absolute bottom-3 right-3 w-8 h-8 border-[#39FF14] rounded-br-[6px]"
-                    style={{ borderBottomWidth: 3, borderRightWidth: 3 }} />
-                </div>
-
-                {/* Scan line — only when active */}
-                {cameraState === 'active' && (
-                  <motion.div
-                    animate={{ top: ['15%', '85%', '15%'] }}
-                    transition={{ duration: 2.5, repeat: Infinity, ease: 'linear' }}
-                    className="absolute left-[10%] right-[10%] h-0.5 bg-gradient-to-r from-transparent via-[#39FF14] to-transparent opacity-80"
-                    style={{ position: 'absolute' }}
-                  />
-                )}
-
-                {/* Flip camera */}
-                <button
-                  onClick={() => setFacingMode(f => f === 'environment' ? 'user' : 'environment')}
-                  className="absolute top-4 right-4 w-8 h-8 rounded-full bg-black/50 flex items-center justify-center text-white/70 hover:text-white transition-all"
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M20 7H4M4 7l4-4M4 7l4 4M4 17h16M16 17l4 4M16 17l4-4"/>
-                  </svg>
-                </button>
+          {/* The camera frame stays mounted so videoRef is always attached */}
+          <div style={{ position: 'relative', width: '100%', maxWidth: 400, aspectRatio: '1 / 1', overflow: 'hidden', border: '1px solid var(--line)', background: '#000', display: frameHidden ? 'none' : 'block' }}>
+            <video ref={videoRef} autoPlay playsInline muted
+              style={{ width: '100%', height: '100%', objectFit: 'cover', transform: `scale(${zoom})`, transition: 'transform 0.2s' }} />
+            <canvas ref={canvasRef} style={{ display: 'none' }} />
+            {cameraState === 'requesting' && (
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000', color: '#fff' }}>
+                Starting camera…
               </div>
-
-              {/* ── Result ── */}
-              {result && result !== 'NO_QR_FOUND' && (
-                <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-                  className="w-full max-w-[400px] flex flex-col gap-4">
-                  <div className="flex items-center gap-3 p-4 rounded-[16px] bg-[#39FF14]/10 border border-[#39FF14]/30">
-                    <CheckCircle2 size={24} className="text-[#39FF14] flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[12px] font-bold text-[#39FF14] mb-1">QR Code Detected!</p>
-                      <p className="text-[13px] text-white/80 font-mono break-all">{result}</p>
-                    </div>
-                  </div>
-
-                  {isHashPayAccount && (
-                    <div className="p-3 rounded-[12px] bg-blue-500/10 border border-blue-500/30 text-[12px] text-blue-300">
-                      HashPay Account — ready to send money
-                    </div>
-                  )}
-                  {isCryptoAddress && !isHashPayAccount && (
-                    <div className="p-3 rounded-[12px] bg-purple-500/10 border border-purple-500/30 text-[12px] text-purple-300">
-                      Crypto address detected
-                    </div>
-                  )}
-
-                  <div className="flex gap-3">
-                    <button onClick={handleResultAction}
-                      className="flex-1 py-2.5 rounded-full text-[13px] font-bold bg-[#39FF14]/10 text-[#39FF14] border border-[#39FF14]/30 hover:bg-[#39FF14]/20 transition-all">
-                      Copy Address
-                    </button>
-                    <button onClick={reset}
-                      className="flex-1 py-2.5 rounded-full text-[13px] font-bold bg-white/5 text-white/70 border border-white/10 hover:bg-white/10 transition-all">
-                      Scan Again
-                    </button>
-                  </div>
-                </motion.div>
-              )}
-
-              {result === 'NO_QR_FOUND' && (
-                <div className="flex flex-col items-center gap-4">
-                  <AlertCircle size={36} className="text-yellow-400" />
-                  <p className="text-[14px] text-[#94A3B8]">No QR code found in image</p>
-                  <button onClick={reset}
-                    className="px-5 py-2.5 rounded-full text-[13px] font-bold bg-white/5 text-white/70 border border-white/10 hover:bg-white/10 transition-all">
-                    Try Again
-                  </button>
-                </div>
-              )}
-
-              {/* Instruction + action buttons */}
-              {!result && (
-                <>
-                  <p className="text-[14px] text-[#94A3B8] mt-6 text-center">
-                    {cameraState === 'active' ? 'Align QR code within the frame' : 'Point camera at a QR code'}
-                  </p>
-                  <div className="flex gap-3 mt-4">
-                    <button onClick={() => fileInputRef.current?.click()}
-                      className="flex items-center gap-2 px-4 py-2.5 bg-[#111827] border border-white/10 rounded-[12px] text-[13px] text-[#94A3B8] hover:text-white hover:border-white/20 transition-all">
-                      <Image size={15} /> Upload from Gallery
-                    </button>
-                    <button onClick={() => setShowRecent(!showRecent)}
-                      className="flex items-center gap-2 px-4 py-2.5 bg-[#111827] border border-white/10 rounded-[12px] text-[13px] text-[#94A3B8] hover:text-white hover:border-white/20 transition-all">
-                      <History size={15} /> Recent Scans
-                    </button>
-                  </div>
-
-                  {/* Recent scans dropdown */}
-                  <AnimatePresence>
-                    {showRecent && recentScans.length > 0 && (
-                      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                        className="mt-3 w-full max-w-[400px] rounded-[12px] bg-[#111827] border border-white/10 overflow-hidden">
-                        {recentScans.map((s, i) => (
-                          <button key={i} onClick={() => { setResult(s); setShowRecent(false) }}
-                            className="w-full text-left px-4 py-2.5 text-[12px] font-mono text-[#94A3B8] hover:bg-white/5 hover:text-white transition-all truncate border-b border-white/5 last:border-0">
-                            {s}
-                          </button>
-                        ))}
-                      </motion.div>
-                    )}
-                    {showRecent && recentScans.length === 0 && (
-                      <p className="mt-3 text-[12px] text-[#4B5563]">No recent scans</p>
-                    )}
-                  </AnimatePresence>
-                </>
-              )}
-
-              {/* Hidden file input */}
-              <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleGalleryUpload} />
-            </div>
-
-            {/* Right controls */}
-            <div className="w-14 flex flex-col items-center gap-4 py-6 border-l border-white/[0.08]">
-              <button onClick={() => setZoom(z => Math.min(z + 0.25, 3))}
-                className="w-9 h-9 rounded-[10px] flex items-center justify-center text-[#4B5563] hover:text-[#94A3B8] transition-all">
-                <ZoomIn size={18} />
-              </button>
-              <button onClick={() => setZoom(z => Math.max(z - 0.25, 1))}
-                className="w-9 h-9 rounded-[10px] flex items-center justify-center text-[#4B5563] hover:text-[#94A3B8] transition-all">
-                <ZoomOut size={18} />
-              </button>
-            </div>
+            )}
+            <div style={{ position: 'absolute', inset: 24, border: '2px solid #fff', pointerEvents: 'none', mixBlendMode: 'difference' }} />
           </div>
 
-          {/* Status bar */}
-          <div className="flex items-center justify-between px-6 py-3 border-t border-white/[0.08] bg-[#111827]">
-            <div className="flex items-center gap-2.5">
-              <Shield size={15} className="text-[#39FF14]" />
-              <div>
-                <div className="text-[11px] font-medium tracking-[0.06em] uppercase text-white">Secure Node Connection</div>
-                <div className="text-[10px] text-[#4B5563]">End-to-end encrypted validation active</div>
+          {result && result !== 'NO_QR_FOUND' && (
+            <div className="dash-form" style={{ width: '100%', maxWidth: 400 }}>
+              <div className="dash-found" style={{ wordBreak: 'break-all' }}>
+                QR code found
+                <div className="dash-mono" style={{ fontWeight: 400, color: 'var(--ink)', marginTop: 4 }}>{result}</div>
+              </div>
+              {isHashPayAccount && <div className="dash-notice">This is a HashPay account number. Copy it, then use Send.</div>}
+              {isCryptoAddress && !isHashPayAccount && <div className="dash-notice">This looks like a crypto wallet address.</div>}
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button className="lp-btn" onClick={handleResultAction}>Copy</button>
+                <button className="lp-btn" onClick={reset}>Scan again</button>
               </div>
             </div>
-            <div className="flex items-center gap-1.5">
-              <div className={`w-2 h-2 rounded-full ${cameraState === 'active' ? 'bg-[#39FF14] animate-pulse' : 'bg-[#4B5563]'}`} />
-              <span className={`text-[11px] font-medium ${cameraState === 'active' ? 'text-[#39FF14]' : 'text-[#4B5563]'}`}>
-                {cameraState === 'active' ? 'Camera Active' : cameraState === 'requesting' ? 'Connecting…' : 'Standby'}
-              </span>
+          )}
+
+          {result === 'NO_QR_FOUND' && (
+            <div className="dash-form" style={{ width: '100%', maxWidth: 400 }}>
+              <div className="lp-error">No QR code was found in that image. Try a clearer photo.</div>
+              <button className="lp-btn" onClick={reset}>Try again</button>
             </div>
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+          )}
+
+          {!result && (
+            <>
+              <p className="dash-grey" aria-live="polite">
+                {cameraState === 'active' ? 'Line up the QR code inside the frame.' : 'Point your camera at a QR code.'}
+              </p>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
+                <button className="lp-btn small" onClick={() => fileInputRef.current?.click()}>Upload a photo</button>
+                <button className="lp-btn small" onClick={() => setShowRecent(!showRecent)} aria-expanded={showRecent}>Recent scans</button>
+                <button className="lp-btn small" onClick={() => setFacingMode(f => (f === 'environment' ? 'user' : 'environment'))}>Switch camera</button>
+                <button className="lp-btn small" onClick={() => setZoom(z => Math.min(z + 0.25, 3))}>Zoom in</button>
+                <button className="lp-btn small" onClick={() => setZoom(z => Math.max(z - 0.25, 1))}>Zoom out</button>
+              </div>
+
+              {showRecent && (
+                recentScans.length > 0 ? (
+                  <div className="dash-card" style={{ width: '100%', maxWidth: 400 }}>
+                    {recentScans.map((s, i) => (
+                      <button key={i} onClick={() => { setResult(s); setShowRecent(false) }}
+                        className="dash-order dash-mono" style={{ fontSize: 12, borderBottom: '1px solid color-mix(in srgb, var(--line) 20%, transparent)' }}>
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s}</span>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="dash-meta">You have no recent scans.</p>
+                )
+              )}
+            </>
+          )}
+
+          <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleGalleryUpload} />
+        </div>
+
+        <div className="dash-pad" style={{ borderTop: '1px solid var(--line)', display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--grey)' }}>
+          <i style={{ width: 8, height: 8, borderRadius: '50%', background: cameraState === 'active' ? 'var(--green)' : 'var(--meta)' }} />
+          {statusText}
+        </div>
+      </div>
+    </div>
   )
 }
