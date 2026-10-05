@@ -1,17 +1,10 @@
 import React, { useState, useRef, useCallback } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Search, Bell, ChevronDown, User, Settings, LogOut, Menu } from 'lucide-react'
-import { HashPayIcon } from '../../components/ui/HashPayLogo'
+import { Menu, Moon, Sun } from 'lucide-react'
 import { useStore } from '../../store/useStore'
 import { useApiStore } from '../../store/useApiStore'
 import { useClickOutside } from '../ui/useClickOutside'
+import { useFlatTheme } from '../ui/FlatShell'
 import { useNavigate } from 'react-router-dom'
-
-const dropdownVariants = {
-  hidden:  { opacity: 0, y: 8, scale: 0.97 },
-  visible: { opacity: 1, y: 0, scale: 1 },
-  exit:    { opacity: 0, y: 8, scale: 0.97 },
-}
 
 export const TopBar: React.FC = () => {
   const notifications    = useStore(s => s.ui.notifications)
@@ -21,6 +14,7 @@ export const TopBar: React.FC = () => {
   const apiLogout        = useApiStore(s => s.logout)
   const user             = useApiStore(s => s.user)
   const navigate         = useNavigate()
+  const { dark, toggle } = useFlatTheme()
 
   const [showNotifs, setShowNotifs] = useState(false)
   const [showUser,   setShowUser]   = useState(false)
@@ -33,163 +27,61 @@ export const TopBar: React.FC = () => {
   const unread = notifications.filter(n => !n.read).length
 
   return (
-    <div
-      className="h-14 flex-shrink-0 flex items-center gap-3 px-5 z-20 bg-white"
-      style={{ borderBottom: '1px solid #DDE6F2', boxShadow: '0 1px 4px rgba(10,25,41,0.05)' }}
-    >
-      {/* Hamburger */}
-      <button
-        onClick={toggleSidebar}
-        className="lg:hidden p-2 rounded-lg transition-all flex-shrink-0"
-        style={{ color: '#7A97B4' }}
-        onMouseEnter={e => { e.currentTarget.style.background = '#EEF3FB'; e.currentTarget.style.color = '#0A1929' }}
-        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#7A97B4' }}
-        aria-label="Toggle sidebar"
-      >
-        <Menu size={18} />
+    <div className="dash-top">
+      <button className="dash-iconbtn dash-menu" onClick={toggleSidebar} aria-label="Toggle menu">
+        <Menu size={16} />
       </button>
 
-      {/* Search */}
-      <div className="flex-1 relative max-w-[300px]">
-        <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: '#A8BDD4' }} />
-        <input
-          type="text"
-          placeholder="Search tokens, markets…"
-          className="w-full rounded-full pl-9 pr-4 py-2 text-[13px] font-semibold transition-all"
-          style={{
-            background: '#EEF3FB',
-            border: '1px solid #DDE6F2',
-            color: '#0A1929',
-          }}
-        />
-      </div>
+      <input className="lp-input dash-search" type="search" placeholder="Search tokens and markets" aria-label="Search tokens and markets" />
 
-      <div className="flex-1" />
+      <div className="grow" />
 
-      {/* Network badge */}
-      <div
-        className="flex items-center gap-2 px-3 py-1.5 rounded-full"
-        style={{ background: '#E4F7EE', border: '1px solid rgba(5,122,75,0.2)' }}
-      >
-        <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#057A4B' }} />
-        <span className="text-[11px] font-bold tracking-[0.05em]" style={{ color: '#057A4B' }}>
-          Sui Mainnet
-        </span>
-      </div>
+      <span className="dash-net"><i />Sui mainnet</span>
 
-      {/* Notifications */}
-      <div className="relative" ref={notifsRef}>
+      <div className="dash-menu-wrap" ref={notifsRef}>
         <button
+          className="dash-iconbtn"
           onClick={() => { setShowNotifs(!showNotifs); setShowUser(false); if (!showNotifs) markRead() }}
-          className="relative p-2 rounded-lg transition-all"
-          style={{ color: '#7A97B4' }}
-          onMouseEnter={e => { e.currentTarget.style.background = '#EEF3FB'; e.currentTarget.style.color = '#0A1929' }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#7A97B4' }}
-          aria-label="Notifications"
+          aria-expanded={showNotifs} aria-label={`Notifications${unread ? `, ${unread} unread` : ''}`}
         >
-          <Bell size={17} />
-          {unread > 0 && (
-            <span
-              className="absolute top-1 right-1 w-3.5 h-3.5 rounded-full text-[8px] font-bold text-white flex items-center justify-center"
-              style={{ background: '#C5202B' }}
-            >
-              {unread}
-            </span>
-          )}
+          Alerts{unread > 0 && <span className="dash-count">{unread}</span>}
         </button>
 
-        <AnimatePresence>
-          {showNotifs && (
-            <motion.div
-              variants={dropdownVariants}
-              initial="hidden" animate="visible" exit="exit"
-              transition={{ duration: 0.15, ease: 'easeOut' }}
-              className="absolute right-0 top-full mt-2 w-[320px] rounded-2xl overflow-hidden z-50 bg-white"
-              style={{ border: '1px solid #DDE6F2', boxShadow: '0 16px 48px rgba(10,25,41,0.12)' }}
-            >
-              <div className="px-4 py-3 flex items-center justify-between" style={{ borderBottom: '1px solid #DDE6F2' }}>
-                <span className="text-[13px] font-bold" style={{ color: '#0A1929' }}>Notifications</span>
-                <span className="text-[11px] font-bold cursor-pointer" style={{ color: '#0B50D4' }}>Mark all read</span>
-              </div>
-              {notifications.map(n => (
-                <div
-                  key={n.id}
-                  className="px-4 py-3 flex items-start gap-3"
-                  style={{
-                    borderBottom: '1px solid #EEF3FB',
-                    background: !n.read ? '#F4F8FD' : 'transparent',
-                  }}
-                >
-                  {!n.read && (
-                    <div className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0" style={{ background: '#0B50D4' }} />
-                  )}
-                  <p className="text-[12px] font-semibold leading-relaxed" style={{ color: '#3D5A78' }}>{n.message}</p>
-                </div>
-              ))}
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {showNotifs && (
+          <div className="dash-pop" role="menu">
+            <div className="row head">Notifications</div>
+            {notifications.length === 0 && <div className="row">You have no notifications.</div>}
+            {notifications.map(n => (
+              <div key={n.id} className={`row${!n.read ? ' unread' : ''}`}>{n.message}</div>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* User */}
-      <div className="relative" ref={userRef}>
+      <button className="dash-iconbtn" onClick={toggle} aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}>
+        {dark ? <Sun size={16} /> : <Moon size={16} />}
+      </button>
+
+      <div className="dash-menu-wrap" ref={userRef}>
         <button
+          className="dash-iconbtn"
           onClick={() => { setShowUser(!showUser); setShowNotifs(false) }}
-          className="flex items-center gap-2 px-2 py-1.5 rounded-xl transition-all"
-          style={{ border: '1px solid transparent' }}
-          onMouseEnter={e => { e.currentTarget.style.background = '#EEF3FB'; e.currentTarget.style.borderColor = '#DDE6F2' }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent' }}
+          aria-expanded={showUser}
         >
-          <HashPayIcon size={26} />
-          <ChevronDown size={13} style={{ color: '#7A97B4' }} />
+          Account
         </button>
 
-        <AnimatePresence>
-          {showUser && (
-            <motion.div
-              variants={dropdownVariants}
-              initial="hidden" animate="visible" exit="exit"
-              transition={{ duration: 0.15, ease: 'easeOut' }}
-              className="absolute right-0 top-full mt-2 w-[210px] rounded-2xl overflow-hidden z-50 bg-white"
-              style={{ border: '1px solid #DDE6F2', boxShadow: '0 16px 48px rgba(10,25,41,0.12)' }}
-            >
-              <div className="px-4 py-3" style={{ borderBottom: '1px solid #DDE6F2' }}>
-                <div className="text-[13px] font-bold" style={{ color: '#0A1929' }}>
-                  {user?.fullName ?? 'My Account'}
-                </div>
-                <div className="text-[11px] font-mono mt-0.5 truncate font-semibold" style={{ color: '#7A97B4' }}>
-                  {user?.suiAddress ?? user?.evmAddress ?? user?.email ?? '—'}
-                </div>
-              </div>
-              {[
-                { icon: User,     label: 'Profile' },
-                { icon: Settings, label: 'Settings' },
-              ].map(({ icon: Icon, label }) => (
-                <button
-                  key={label}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 text-[13px] font-semibold transition-all"
-                  style={{ color: '#3D5A78' }}
-                  onMouseEnter={e => { e.currentTarget.style.background = '#F4F8FD'; e.currentTarget.style.color = '#0A1929' }}
-                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#3D5A78' }}
-                >
-                  <Icon size={14} />
-                  {label}
-                </button>
-              ))}
-              <div style={{ borderTop: '1px solid #DDE6F2' }} />
-              <button
-                onClick={() => { apiLogout(); disconnectWallet(); navigate('/login') }}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-[13px] font-bold transition-all"
-                style={{ color: '#C5202B' }}
-                onMouseEnter={e => { e.currentTarget.style.background = '#FDECEA' }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
-              >
-                <LogOut size={14} />
-                Sign Out
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {showUser && (
+          <div className="dash-pop" role="menu">
+            <div className="row">
+              <b>{user?.fullName ?? 'My account'}</b>
+              <div className="mono">{user?.suiAddress ?? user?.evmAddress ?? user?.email ?? '—'}</div>
+            </div>
+            <button className="row" onClick={() => { apiLogout(); disconnectWallet(); navigate('/login') }}>
+              Sign out
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )

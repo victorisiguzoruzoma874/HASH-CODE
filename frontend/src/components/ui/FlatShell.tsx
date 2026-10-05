@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useSyncExternalStore } from 'react'
 import { Link } from 'react-router-dom'
 import { Moon, Sun } from 'lucide-react'
 
@@ -8,6 +8,27 @@ import { Moon, Sun } from 'lucide-react'
  */
 
 const THEME_KEY = 'hp-theme'
+
+/* Theme lives outside React so every page (and the dashboard top bar) shares it */
+const listeners = new Set<() => void>()
+function readTheme(): 'light' | 'dark' {
+  try { return localStorage.getItem(THEME_KEY) === 'dark' ? 'dark' : 'light' } catch { return 'light' }
+}
+let currentTheme = readTheme()
+
+export function useFlatTheme() {
+  const theme = useSyncExternalStore(
+    cb => { listeners.add(cb); return () => { listeners.delete(cb) } },
+    () => currentTheme,
+    () => 'light' as const,
+  )
+  const toggle = () => {
+    currentTheme = currentTheme === 'dark' ? 'light' : 'dark'
+    try { localStorage.setItem(THEME_KEY, currentTheme) } catch { /* ignore */ }
+    listeners.forEach(l => l())
+  }
+  return { theme, dark: theme === 'dark', toggle }
+}
 
 export const FLAT_CSS = `
 .lp {
@@ -163,16 +184,7 @@ export const FLAT_CSS = `
 const FOOTER_LINKS = ['Privacy', 'Terms', 'Security', 'Audit', 'Docs']
 
 export const FlatShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [dark, setDark] = useState<boolean>(() => {
-    try { return localStorage.getItem(THEME_KEY) === 'dark' } catch { return false }
-  })
-
-  const toggleTheme = () => {
-    setDark(d => {
-      try { localStorage.setItem(THEME_KEY, d ? 'light' : 'dark') } catch { /* ignore */ }
-      return !d
-    })
-  }
+  const { dark, toggle: toggleTheme } = useFlatTheme()
 
   return (
     <div className="lp" data-theme={dark ? 'dark' : 'light'}>

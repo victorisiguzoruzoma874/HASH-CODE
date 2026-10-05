@@ -13,10 +13,13 @@ import { BillPayModal } from '../components/modals/BillPayModal'
 import { useStore } from '../store/useStore'
 import { useApiStore } from '../store/useApiStore'
 import { DashboardHome } from '../components/dashboard/DashboardHome'
+import { FLAT_CSS, useFlatTheme } from '../components/ui/FlatShell'
+import { DASH_CSS } from '../components/dashboard/dashCss'
 
 export const Dashboard: React.FC = () => {
   const activeModal = useStore(s => s.ui.activeModal)
   const closeModal  = useStore(s => s.closeModal)
+  const toggleSidebar = useStore(s => s.toggleSidebar)
   const sidebarOpen = useStore(s => s.ui.sidebarOpen)
   const location    = useLocation()
   const isHome      = location.pathname === '/dashboard'
@@ -33,18 +36,24 @@ export const Dashboard: React.FC = () => {
     return () => clearInterval(interval)
   }, [fetchMe, fetchPrices, fetchOrders])
 
+  const { theme } = useFlatTheme()
+
+  // The sidebar is an overlay below 1024px, so start it closed there
+  useEffect(() => {
+    if (window.innerWidth < 1024 && useStore.getState().ui.sidebarOpen) toggleSidebar()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   return (
-    <div className="h-screen flex overflow-hidden" style={{ background: '#EEF3FB' }}>
+    <div className="lp dash" data-theme={theme}>
+      <style>{FLAT_CSS + DASH_CSS}</style>
       <Sidebar />
 
-      <div
-        className="flex flex-col flex-1 overflow-hidden transition-all duration-300"
-        style={{ marginLeft: sidebarOpen ? 220 : 0 }}
-      >
+      <div className={`dash-main${sidebarOpen ? ' shifted' : ''}`}>
         <TopBar />
 
-        <main className="flex-1 overflow-y-auto">
-          {isHome ? <DashboardHome /> : <Outlet />}
+        <main className="dash-scroll">
+          {isHome ? <DashboardHome /> : <div className="dash-legacy"><Outlet /></div>}
         </main>
       </div>
 
