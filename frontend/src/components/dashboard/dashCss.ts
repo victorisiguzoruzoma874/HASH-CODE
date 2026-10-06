@@ -4,6 +4,10 @@
  */
 export const DASH_CSS = `
 .lp.dash { height: 100vh; min-height: 0; flex-direction: row; overflow: hidden; }
+.dash robot-chat { left: 62px; bottom: 222px; }
+@media (max-width: 1023px), (max-height: 620px) {
+  .dash robot-chat { left: max(16px, env(safe-area-inset-left)); bottom: max(20px, env(safe-area-inset-bottom)); }
+}
 
 /* Sidebar */
 .dash-side {

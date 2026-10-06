@@ -45,6 +45,14 @@ export const Dashboard: React.FC = () => {
     <div className="lp dash" data-theme={theme}>
       <style>{FLAT_CSS + DASH_CSS}</style>
       <Sidebar />
+      {React.createElement('robot-chat', {
+        placement: 'left',
+        size: '96',
+        'assistant-name': 'HashPay Assistant',
+        greeting: 'Hi! I’m your HashPay assistant. How can I help?',
+        endpoint: import.meta.env.VITE_ASSISTANT_ENDPOINT || undefined,
+        'z-index': '35',
+      })}
 
       <div className={`dash-main${sidebarOpen ? ' shifted' : ''}`}>
         <TopBar />

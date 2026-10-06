@@ -1,0 +1,35 @@
+﻿import http from 'node:http';
+import fs from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
+import {spawn} from 'node:child_process';
+const root=path.resolve('public');
+const server=http.createServer((req,res)=>{const p=path.join(root,req.url.split('?')[0]);try{res.setHeader('Content-Type',p.endsWith('.js')?'application/javascript':p.endsWith('.png')?'image/png':'text/html');res.end(fs.readFileSync(p));}catch{res.writeHead(404);res.end();}}).listen(4179,'127.0.0.1');
+const profile=fs.mkdtempSync(path.join(os.tmpdir(),'robot-check-'));
+const chrome=spawn('C:/Program Files/Google/Chrome/Application/chrome.exe',['--headless=new','--no-sandbox','--disable-dev-shm-usage','--no-first-run','--disable-gpu','--remote-debugging-port=9341',`--user-data-dir=${profile}`,'http://127.0.0.1:4179/robot-chat/demo.html'],{windowsHide:true,stdio:'ignore'});
+let ws;
+try{
+let tabs;for(let i=0;i<50;i++){try{tabs=await(await fetch('http://127.0.0.1:9341/json')).json();break;}catch{await new Promise(r=>setTimeout(r,100));}}
+ws=new WebSocket(tabs.find(t=>t.type==='page').webSocketDebuggerUrl);await new Promise(r=>ws.addEventListener('open',r,{once:true}));let id=0;const pending=new Map();ws.addEventListener('message',e=>{const m=JSON.parse(e.data);if(pending.has(m.id)){pending.get(m.id)(m);pending.delete(m.id);}});const call=(method,params={})=>new Promise(r=>{const n=++id;pending.set(n,r);ws.send(JSON.stringify({id:n,method,params}));});
+const evaluate=async expression=>{const r=await call('Runtime.evaluate',{expression,awaitPromise:true,returnByValue:true});if(r.error)throw Error(JSON.stringify(r.error));if(r.result.exceptionDetails)throw Error(JSON.stringify(r.result.exceptionDetails));return r.result.result.value;};
+await evaluate(`customElements.whenDefined('robot-chat')`);
+await call('Emulation.setDeviceMetricsOverride',{width:1280,height:900,deviceScaleFactor:1,mobile:false});
+await new Promise(r=>setTimeout(r,1000));console.log('image',await evaluate(`(()=>{let i=document.querySelector('robot-chat').$('img');return {src:i.src,complete:i.complete,width:i.naturalWidth};})()`));console.log('desktop',await evaluate(`(async()=>{const r=document.querySelector('robot-chat'), s=r.shadowRoot;r.$('.launcher').click();const opened=!r.$('.panel').hidden&&s.activeElement===r.$('.input');r.$('.input').value='hello';await r.send();r.$('.close').click();return {opened,demo:r.messages.at(-1).content.startsWith('Demo mode:'),closed:r.$('.panel').hidden,focusReturned:s.activeElement===r.$('.launcher'),assetLoaded:r.$('img').complete&&r.$('img').naturalWidth>0};})()`));
+await call('Input.dispatchMouseEvent',{type:'mouseMoved',x:1000,y:100});await new Promise(r=>setTimeout(r,500));console.log('tracking',await evaluate(`({target:document.querySelector('robot-chat').target,transform:document.querySelector('robot-chat').$('.pose').style.transform})`));
+console.log('neutral',await evaluate(`(async()=>{let r=document.querySelector('robot-chat');document.documentElement.dispatchEvent(new PointerEvent('pointerleave'));await new Promise(t=>setTimeout(t,800));return r.current.every(v=>Math.abs(v)<.001);})()`));
+await call('Emulation.setDeviceMetricsOverride',{width:375,height:667,deviceScaleFactor:1,mobile:true});console.log('mobile',await evaluate(`(()=>{let r=document.querySelector('robot-chat');r.toggle(true);let b=r.$('.panel').getBoundingClientRect();return {contained:b.left>=0&&b.right<=innerWidth&&b.top>=0&&b.bottom<=innerHeight,width:b.width};})()`));
+await call('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]});console.log('reducedMotion',await evaluate(`(()=>{let r=document.querySelector('robot-chat');r.neutral();return {neutral:r.current.every(v=>v===0),animation:getComputedStyle(r.$('.float')).animationName};})()`));
+console.log('instances',await evaluate(`(()=>{let a=document.querySelector('robot-chat'),b=document.createElement('robot-chat');document.body.append(b);b.toggle(true);let independent=a.messages!==b.messages;b.remove();return {independent,removed:!b.isConnected};})()`));
+console.log('backend',await evaluate(String.raw`(async()=>{const r=document.querySelector('robot-chat'),original=window.fetch;let results=[];try{r.setAttribute('endpoint','/test');for(const [type,body,expected] of [['application/json',JSON.stringify({content:'JSON reply'}),'JSON reply'],['text/plain','Plain reply','Plain reply'],['text/event-stream','data: '+JSON.stringify({delta:'Stream '})+'\n\ndata: '+JSON.stringify({delta:'reply'})+'\n\ndata: [DONE]\n\n','Stream reply']]){window.fetch=async()=>new Response(body,{headers:{'Content-Type':type}});r.$('.input').value='test';await r.send();if(r.messages.at(-1).content!==expected)throw Error('Failed '+type);results.push(type);}window.fetch=async()=>new Response('',{status:503});r.$('.input').value='failure';await r.send();if(!r.$('.retry'))throw Error('Missing retry');window.fetch=async()=>new Response(JSON.stringify({content:'Recovered'}),{headers:{'Content-Type':'application/json'}});await r.send(true);if(r.messages.at(-1).content!=='Recovered')throw Error('Retry failed');return {formats:results,retry:true};}finally{window.fetch=original;r.removeAttribute('endpoint');}})()`));
+await evaluate(`document.querySelector('robot-chat').toggle(false)`);
+await call('Input.dispatchKeyEvent',{type:'keyDown',text:'\r',key:'Enter',code:'Enter',windowsVirtualKeyCode:13});await call('Input.dispatchKeyEvent',{type:'keyUp',key:'Enter',code:'Enter',windowsVirtualKeyCode:13});
+console.log('keyboardOpen',await evaluate(`document.querySelector('robot-chat').open`));
+await call('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
+console.log('keyboardClose',await evaluate(`!document.querySelector('robot-chat').open`));
+}catch(e){console.error(e);process.exitCode=1;}finally{ws?.close();chrome.kill();server.close();}
+
+
+
+
+
+
