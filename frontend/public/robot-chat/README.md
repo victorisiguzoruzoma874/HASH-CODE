@@ -10,7 +10,7 @@ Copy this entire folder to another website's public directory:
 
 ```html
 <script type="module" src="/robot-chat/robot-chat.js"></script>
-<robot-chat robot-src="/robot-chat/robot.png" placement="left" size="104"
+<robot-chat animated placement="left" size="104"
   accent="#42e5f5" assistant-name="Your Assistant" greeting="Hello!"
   endpoint="/api/assistant" z-index="1000"></robot-chat>
 ```
@@ -42,10 +42,12 @@ Translate your provider's protocol into this format on the server. Only backend-
 
 ## Robot assets
 
-The supplied PNG is copied unchanged. Flattened mode uses whole-image tilt and cannot provide independent eyes, head movement or blinking. It never adds fake eyes or cuts apart the character.
+The dashboard and demo use `animated` to enable the bundled character layers. The original `robot.png` remains unchanged. `robot-face-base.png` is an image-generation edit that removes the eyes and their glow, preserving the head, smile and body. CSS clips the body and head into independently moving layers. `eyes-mask.svg` extracts only the original cyan eye contours from the original image, leaving the dark screen behind them in the edited head. The body stays steady apart from idle floating, the head turns toward the pointer, and the eyes move up to 6px and blink every 3.5–7 seconds. Blinking scales only the eye layer, preserving the shell and smile.
+
+Remove `animated` for flattened whole-image tilt. Supplying `robot-src` selects a custom flattened character and does not apply the bundled masks. A flattened image alone cannot provide independent head/eye movement or blinking.
 Mouse movement is tracked across the entire page in the capture phase, including over controls that stop event propagation. A smooth viewport-scaled response keeps the pose changing as the cursor moves across distant parts of the page. The flattened robot leans up to 6° and shifts up to 4px toward the cursor, with 3D tilt capped at 8° per axis. Touch remains tap-only; reduced motion disables tracking.
 
-For real layered animation, supply **all three** aligned transparent PNGs:
+To replace the bundled character with your own layered character, supply **all three** aligned transparent PNGs:
 
 ```html
 <robot-chat body-src="/robot/body.png" head-src="/robot/head.png"
@@ -60,7 +62,7 @@ Use identical canvas dimensions and registration. The head pivot is 50% x / 53% 
 
 ## Verification checklist
 
-Verified in headless Chrome: original image loading, pointer tracking and clamping, neutral return, click opening, Enter activation, Escape closing, focus return, 375px mobile containment, reduced motion, instance isolation, JSON/plain/SSE responses, and error recovery via Retry. Backend checks use mock responses; a live provider is not configured. The production build passes. The existing application bundle still produces Vite's large-chunk warning.
+Verified in headless Chrome: all layered images load, head motion is independent of the body, eyes track and close during a blink, pointer tracking and clamping, neutral return, click opening, Enter activation, Escape closing, focus return, 375px mobile containment, reduced motion, instance isolation, JSON/plain/SSE responses, and error recovery via Retry. Backend checks use mock responses; a live provider is not configured. The production build passes. The existing application bundle still produces Vite's large-chunk warning.
 
 From the frontend directory, `node robot-chat-check.mjs` reruns browser checks on Windows with Google Chrome installed (ports 4179 and 9341 must be free).
 

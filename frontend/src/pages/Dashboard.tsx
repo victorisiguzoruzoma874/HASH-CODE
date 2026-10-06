@@ -46,6 +46,7 @@ export const Dashboard: React.FC = () => {
       <style>{FLAT_CSS + DASH_CSS}</style>
       <Sidebar />
       {React.createElement('robot-chat', {
+        animated: '',
         placement: 'left',
         size: '96',
         'assistant-name': 'HashPay Assistant',

@@ -4,7 +4,7 @@ import path from 'node:path';
 import os from 'node:os';
 import {spawn} from 'node:child_process';
 const root=path.resolve('public');
-const server=http.createServer((req,res)=>{const p=path.join(root,req.url.split('?')[0]);try{res.setHeader('Content-Type',p.endsWith('.js')?'application/javascript':p.endsWith('.png')?'image/png':'text/html');res.end(fs.readFileSync(p));}catch{res.writeHead(404);res.end();}}).listen(4179,'127.0.0.1');
+const server=http.createServer((req,res)=>{const p=path.join(root,req.url.split('?')[0]);try{res.setHeader('Content-Type',p.endsWith('.js')?'application/javascript':p.endsWith('.png')?'image/png':p.endsWith('.svg')?'image/svg+xml':'text/html');res.end(fs.readFileSync(p));}catch{res.writeHead(404);res.end();}}).listen(4179,'127.0.0.1');
 const profile=fs.mkdtempSync(path.join(os.tmpdir(),'robot-check-'));
 const chrome=spawn('C:/Program Files/Google/Chrome/Application/chrome.exe',['--headless=new','--no-sandbox','--disable-dev-shm-usage','--no-first-run','--disable-gpu','--remote-debugging-port=9341',`--user-data-dir=${profile}`,'http://127.0.0.1:4179/robot-chat/demo.html'],{windowsHide:true,stdio:'ignore'});
 let ws;
@@ -25,6 +25,13 @@ await call('Input.dispatchMouseEvent',{type:'mouseMoved',x:400,y:120});
 const capturedTarget=await evaluate(`document.querySelector('robot-chat').target[0]`);
 if(!(capturedTarget<midTarget))throw Error('Page interaction blocked global tracking');
 console.log('pageWideTracking',{farTarget,midTarget,capturedTarget});
+console.log('layered',await evaluate(`(async()=>{const r=document.querySelector('robot-chat');await new Promise(t=>setTimeout(t,500));if(!r.layered||!r.$('.head').style.transform||r.$('.body-asset').style.transform)throw Error('Head/body movement is not independent');if(!r.$('.eyes').style.transform.includes('translate'))throw Error('Eyes are not tracking');await Promise.all([...r.shadowRoot.querySelectorAll('img')].map(i=>i.decode()));r.blink();if(!r.blinkAnimation)throw Error('Blink did not start');r.blinkAnimation.pause();r.blinkAnimation.currentTime=100;await new Promise(t=>requestAnimationFrame(t));const closed=getComputedStyle(r.$('.eyes img')).transform;if(!closed.includes('0.07'))throw Error('Eye did not close: '+closed);r.blinkAnimation.cancel();return {independentHead:true,eyeTracking:true,blink:true};})()`));
+await evaluate(`document.querySelector('robot-chat').setAttribute('size','200')`);
+await new Promise(r=>setTimeout(r,200));
+const shot=await call('Page.captureScreenshot',{format:'png',clip:{x:0,y:620,width:260,height:280,scale:1}});
+fs.writeFileSync(path.join(os.tmpdir(),'robot-layered-preview.png'),Buffer.from(shot.result.data,'base64'));
+console.log('preview',path.join(os.tmpdir(),'robot-layered-preview.png'));
+await evaluate(`document.querySelector('robot-chat').setAttribute('size','112')`);
 console.log('neutral',await evaluate(`(async()=>{let r=document.querySelector('robot-chat');document.documentElement.dispatchEvent(new PointerEvent('pointerleave'));await new Promise(t=>setTimeout(t,800));return r.current.every(v=>Math.abs(v)<.001);})()`));
 await call('Emulation.setDeviceMetricsOverride',{width:375,height:667,deviceScaleFactor:1,mobile:true});console.log('mobile',await evaluate(`(()=>{let r=document.querySelector('robot-chat');r.toggle(true);let b=r.$('.panel').getBoundingClientRect();return {contained:b.left>=0&&b.right<=innerWidth&&b.top>=0&&b.bottom<=innerHeight,width:b.width};})()`));
 await call('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]});console.log('reducedMotion',await evaluate(`(()=>{let r=document.querySelector('robot-chat');r.neutral();return {neutral:r.current.every(v=>v===0),animation:getComputedStyle(r.$('.float')).animationName};})()`));
@@ -36,9 +43,3 @@ console.log('keyboardOpen',await evaluate(`document.querySelector('robot-chat').
 await call('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
 console.log('keyboardClose',await evaluate(`!document.querySelector('robot-chat').open`));
 }catch(e){console.error(e);process.exitCode=1;}finally{ws?.close();chrome.kill();server.close();}
-
-
-
-
-
-

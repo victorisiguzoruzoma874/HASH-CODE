@@ -14,7 +14,7 @@ template.innerHTML = `
 <button class="launcher" aria-label="Open assistant chat" aria-expanded="false" aria-haspopup="dialog"><div class="float"><div class="pose"></div></div><span class="hint">ASK AI</span></button>`;
 
 export class RobotChat extends HTMLElement {
-  static observedAttributes = ['robot-src','body-src','head-src','eyes-src','size','placement','accent','greeting','assistant-name','endpoint','z-index'];
+  static observedAttributes = ['animated','robot-src','body-src','head-src','eyes-src','size','placement','accent','greeting','assistant-name','endpoint','z-index'];
   constructor() {
     super(); this.attachShadow({mode:'open'}).append(template.content.cloneNode(true));
     this.messages=[]; this.current=[0,0]; this.target=[0,0]; this.open=false; this.busy=false;
@@ -39,7 +39,7 @@ export class RobotChat extends HTMLElement {
     if(!this.messages.length)this.add('assistant',this.getAttribute('greeting')||'Hi! I’m your HashPay assistant. What can I help you with?');
     this.scheduleBlink();
   }
-  disconnectedCallback(){this.listeners?.abort();this.request?.abort();this.observer?.disconnect();cancelAnimationFrame(this.frame);clearTimeout(this.blinkTimer);clearTimeout(this.blinkEnd);this.frame=0;this.busy=false;}
+  disconnectedCallback(){this.listeners?.abort();this.request?.abort();this.observer?.disconnect();cancelAnimationFrame(this.frame);clearTimeout(this.blinkTimer);this.blinkAnimation?.cancel();this.frame=0;this.busy=false;}
   attributeChangedCallback(){if(this.isConnected)this.configure();}
   configure(){
     const size=Math.min(200,Math.max(64,Number(this.getAttribute('size'))||104));this.style.setProperty('--size',`${size}px`);
@@ -48,18 +48,39 @@ export class RobotChat extends HTMLElement {
     this.$('.title').textContent=this.getAttribute('assistant-name')||'HashPay Assistant';
     this.$('.subtitle').textContent=this.getAttribute('endpoint')?'AI assistant':'Demo mode · no AI backend connected';
     this.$('.note').textContent=this.getAttribute('endpoint')?'AI responses may be inaccurate. Never share passwords or recovery phrases.':'Local demo responses only. No actions or transactions are performed.';
-    const pose=this.$('.pose');pose.replaceChildren();
-    const assets=['body-src','head-src','eyes-src'];this.layered=assets.every(a=>this.getAttribute(a));
+    this.blinkAnimation?.cancel();
+    const pose=this.$('.pose');pose.replaceChildren();pose.style.transform='';
+    const assets=['body-src','head-src','eyes-src'];
+    const bundled=this.hasAttribute('animated')&&!this.getAttribute('robot-src')&&!assets.some(a=>this.getAttribute(a));
+    this.layered=bundled||assets.every(a=>this.getAttribute(a));
     const img=src=>{const el=document.createElement('img');el.className='asset';el.src=src;el.alt='';el.draggable=false;return el;};
-    if(this.layered){pose.append(img(this.getAttribute('body-src')));const head=document.createElement('div');head.className='head';head.append(img(this.getAttribute('head-src')));const eyes=document.createElement('div');eyes.className='eyes';eyes.append(img(this.getAttribute('eyes-src')));head.append(eyes);pose.append(head);}else{pose.append(img(this.getAttribute('robot-src')||new URL('./robot.png',import.meta.url).href));}
+    if(this.layered){
+      const original=new URL('./robot.png',import.meta.url).href;
+      const body=img(bundled?original:this.getAttribute('body-src'));
+      body.classList.add('body-asset');
+      const head=document.createElement('div');head.className='head';
+      const shell=img(bundled?new URL('./robot-face-base.png',import.meta.url).href:this.getAttribute('head-src'));
+      const eyes=document.createElement('div');eyes.className='eyes';
+      const eye=img(bundled?original:this.getAttribute('eyes-src'));
+      eye.style.transformOrigin='50% 32%';
+      if(bundled){
+        body.style.clipPath='inset(50.5% 0 0 0)';
+        shell.style.clipPath='inset(0 0 49% 0)';
+        eye.style.maskImage=`url("${new URL('./eyes-mask.svg',import.meta.url).href}")`;
+        eye.style.maskSize='100% 100%';eye.style.maskRepeat='no-repeat';
+        eye.style.filter='drop-shadow(0 0 1px #42e5f5)';
+      }
+      eyes.append(eye);head.append(shell,eyes);pose.append(body,head);
+    }else{pose.append(img(this.getAttribute('robot-src')||new URL('./robot.png',import.meta.url).href));}
     this.paint();this.aim();
   }
-  neutral(){this.pointer=null;this.target=[0,0];if(this.motion.matches){this.current=[0,0];cancelAnimationFrame(this.frame);this.frame=0;this.paint();}else this.animate();}
+  neutral(){this.pointer=null;this.target=[0,0];if(this.motion.matches){this.blinkAnimation?.cancel();this.current=[0,0];cancelAnimationFrame(this.frame);this.frame=0;this.paint();}else this.animate();}
   layout(){const r=this.$('.launcher').getBoundingClientRect();this.$('.panel').style.maxHeight=`${Math.max(0,r.top-24)}px`;}
   aim(){this.layout();if(!this.pointer||this.motion.matches||!this.mouse.matches)return;const r=this.$('.launcher').getBoundingClientRect();this.target=[Math.tanh((this.pointer[0]-r.left-r.width/2)/Math.max(240,innerWidth*.55)),Math.tanh((this.pointer[1]-r.top-r.height/2)/Math.max(240,innerHeight*.55))];this.animate();}
   animate(){if(this.frame||!this.isConnected)return;let last=performance.now();const tick=now=>{this.frame=0;const f=1-Math.exp(-Math.min(now-last,64)/100);last=now;this.current=this.current.map((v,i)=>v+(this.target[i]-v)*f);this.paint();if(this.current.some((v,i)=>Math.abs(v-this.target[i])>.001))this.frame=requestAnimationFrame(tick);};this.frame=requestAnimationFrame(tick);}
-  paint(){const [x,y]=this.current;const el=this.$(this.layered?'.head':'.pose');if(el)el.style.transform=`translate(${this.layered?0:x*4}px,${this.layered?0:y*3}px) rotateX(${-y*8}deg) rotateY(${x*8}deg) rotateZ(${x*(this.layered?2:6)}deg)`;const eyes=this.$('.eyes');if(eyes)eyes.style.transform=`translate(${x*6}px,${y*6}px)`;}
-  scheduleBlink(){clearTimeout(this.blinkTimer);this.blinkTimer=setTimeout(()=>{const eye=this.$('.eyes .asset');if(eye&& !this.motion.matches){eye.style.transform='scaleY(.12)';eye.style.transformOrigin='50% 32%';this.blinkEnd=setTimeout(()=>{eye.style.transform='';},110);}if(this.isConnected)this.scheduleBlink();},4500+Math.random()*4000);}
+  paint(){const [x,y]=this.current;const el=this.$(this.layered?'.head':'.pose');if(el)el.style.transform=`translate(${this.layered?0:x*4}px,${this.layered?0:y*3}px) rotateX(${-y*8}deg) rotateY(${x*8}deg) rotateZ(${x*(this.layered?5:6)}deg)`;const eyes=this.$('.eyes');if(eyes)eyes.style.transform=`translate(${x*6}px,${y*6}px)`;}
+  blink(){const eye=this.$('.eyes .asset');if(!eye||this.motion.matches||!this.isConnected)return;this.blinkAnimation?.cancel();this.blinkAnimation=eye.animate([{transform:'scaleY(1)',offset:0},{transform:'scaleY(.07)',offset:.42},{transform:'scaleY(.07)',offset:.55},{transform:'scaleY(1)',offset:1}],{duration:210,easing:'ease-in-out'});}
+  scheduleBlink(){clearTimeout(this.blinkTimer);this.blinkTimer=setTimeout(()=>{this.blink();if(this.isConnected)this.scheduleBlink();},3500+Math.random()*3500);}
   toggle(value=!this.open){this.layout();this.open=value;this.$('.panel').hidden=!value;this.$('.launcher').setAttribute('aria-expanded',String(value));this.$('.launcher').setAttribute('aria-label',value?'Close assistant chat':'Open assistant chat');if(value)this.$('.input').focus();else this.$('.launcher').focus();}
   add(role,content){const message={role,content};this.messages.push(message);const node=document.createElement('div');node.className=`message ${role}`;const label=document.createElement('span');label.className='role';label.textContent=role==='user'?'You':this.getAttribute('assistant-name')||'Assistant';const body=document.createElement('span');body.textContent=content;node.append(label,body);this.$('.history').append(node);this.scroll();return {message,body};}
   scroll(){const log=this.$('.history');log.scrollTop=log.scrollHeight;}
