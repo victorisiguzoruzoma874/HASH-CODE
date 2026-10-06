@@ -12,6 +12,7 @@ import { useApiStore } from '../store/useApiStore'
 import { DashboardHome } from '../components/dashboard/DashboardHome'
 import { FLAT_CSS, useFlatTheme } from '../components/ui/FlatShell'
 import { DASH_CSS } from '../components/dashboard/dashCss'
+import { RobotAssistant } from '../components/dashboard/RobotAssistant'
 
 export const Dashboard: React.FC = () => {
   const activeModal = useStore(s => s.ui.activeModal)
@@ -45,15 +46,7 @@ export const Dashboard: React.FC = () => {
     <div className="lp dash" data-theme={theme}>
       <style>{FLAT_CSS + DASH_CSS}</style>
       <Sidebar />
-      {React.createElement('robot-chat', {
-        animated: '',
-        placement: 'left',
-        size: '96',
-        'assistant-name': 'HashPay Assistant',
-        greeting: 'Hi! I’m your HashPay assistant. How can I help?',
-        endpoint: import.meta.env.VITE_ASSISTANT_ENDPOINT || undefined,
-        'z-index': '35',
-      })}
+      <RobotAssistant />
 
       <div className={`dash-main${sidebarOpen ? ' shifted' : ''}`}>
         <TopBar />

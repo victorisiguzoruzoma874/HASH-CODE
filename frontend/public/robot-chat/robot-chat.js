@@ -84,6 +84,15 @@ export class RobotChat extends HTMLElement {
   toggle(value=!this.open){this.layout();this.open=value;this.$('.panel').hidden=!value;this.$('.launcher').setAttribute('aria-expanded',String(value));this.$('.launcher').setAttribute('aria-label',value?'Close assistant chat':'Open assistant chat');if(value)this.$('.input').focus();else this.$('.launcher').focus();}
   add(role,content){const message={role,content};this.messages.push(message);const node=document.createElement('div');node.className=`message ${role}`;const label=document.createElement('span');label.className='role';label.textContent=role==='user'?'You':this.getAttribute('assistant-name')||'Assistant';const body=document.createElement('span');body.textContent=content;node.append(label,body);this.$('.history').append(node);this.scroll();return {message,body};}
   scroll(){const log=this.$('.history');log.scrollTop=log.scrollHeight;}
+  addAction(answer,action,label){
+    const button=document.createElement('button');button.type='button';button.className='retry';button.textContent=label||'Open app task';button.style.cssText='display:block;margin:12px 0 0;padding:9px 12px;text-align:left';
+    button.addEventListener('click',async()=>{
+      if(!this.performAction){this.$('.status').textContent='This task needs the HashPay app integration.';return;}
+      button.disabled=true;
+      try{const result=await this.performAction(action);this.$('.status').textContent=result;button.textContent='Opened · review in the app';}
+      catch(error){this.$('.status').textContent=error.message;button.disabled=false;}
+    });answer.body.parentElement.append(button);this.scroll();
+  }
   async send(retry=false){
     if(this.busy)return;const input=this.$('.input');const text=input.value.trim();if(!retry&&!text)return;
     if(!retry){this.add('user',text);input.value='';}this.busy=true;this.$('.send').disabled=true;this.$('.status').textContent='Preparing a response…';this.request=new AbortController();
@@ -92,13 +101,14 @@ export class RobotChat extends HTMLElement {
       const endpoint=this.getAttribute('endpoint');
       if(!endpoint){answer=this.add('assistant','Demo mode: I can show how this chat works. Connect your own AI backend for real answers. I haven’t accessed your account or performed any actions.');}
       else{
-        const history=this.messages.map(({role,content})=>({role,content}));
-        const response=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json','Accept':'text/event-stream, application/json, text/plain'},body:JSON.stringify({messages:history}),signal:this.request.signal});
-        if(!response.ok)throw new Error(`Assistant service returned ${response.status}.`);
+        const history=this.messages.filter(m=>m.content).slice(-24).map(({role,content})=>({role,content}));
+        while(history.length>1&&history.reduce((n,m)=>n+m.content.length,0)>32000)history.shift();
+        const response=await (this.requestAssistant||fetch)(endpoint,{method:'POST',headers:{'Content-Type':'application/json','Accept':'text/event-stream, application/json, text/plain'},body:JSON.stringify({messages:history}),signal:this.request.signal});
+        if(!response.ok){let message=`Assistant service returned ${response.status}.`;try{const data=await response.json();if(typeof data.error==='string')message=data.error;}catch{}throw new Error(message);}
         answer=this.add('assistant','');const type=response.headers.get('content-type')||'';
         const append=chunk=>{answer.message.content+=chunk;answer.body.textContent=answer.message.content;this.scroll();};
         if(type.includes('application/json')){const data=await response.json();if(typeof data.content!=='string')throw new Error('Expected a content string from the assistant.');append(data.content);}
-        else if(response.body){const reader=response.body.getReader();const decoder=new TextDecoder();let buffer='';const event=block=>{const raw=block.split('\n').filter(l=>l.startsWith('data:')).map(l=>l.slice(5).trimStart()).join('\n');if(!raw||raw==='[DONE]')return;const data=JSON.parse(raw);if(typeof data.delta==='string')append(data.delta);if(typeof data.activity==='string')this.$('.status').textContent=data.activity;if(data.error)throw new Error(String(data.error));};while(true){const {done,value}=await reader.read();buffer+=decoder.decode(value,{stream:!done});if(type.includes('text/event-stream')){buffer=buffer.replace(/\r\n/g,'\n');let end;while((end=buffer.indexOf('\n\n'))!==-1){event(buffer.slice(0,end));buffer=buffer.slice(end+2);}if(done&&buffer.trim())event(buffer);}else{append(buffer);buffer='';}if(done)break;}}
+        else if(response.body){const reader=response.body.getReader();const decoder=new TextDecoder();let buffer='';const event=block=>{const raw=block.split('\n').filter(l=>l.startsWith('data:')).map(l=>l.slice(5).trimStart()).join('\n');if(!raw||raw==='[DONE]')return;const data=JSON.parse(raw);if(typeof data.delta==='string')append(data.delta);if(typeof data.activity==='string')this.$('.status').textContent=data.activity;if(data.action)this.addAction(answer,data.action,data.label);if(data.error)throw new Error(String(data.error));};while(true){const {done,value}=await reader.read();buffer+=decoder.decode(value,{stream:!done});if(type.includes('text/event-stream')){buffer=buffer.replace(/\r\n/g,'\n');let end;while((end=buffer.indexOf('\n\n'))!==-1){event(buffer.slice(0,end));buffer=buffer.slice(end+2);}if(done&&buffer.trim())event(buffer);}else{append(buffer);buffer='';}if(done)break;}}
         if(!answer.message.content.trim())throw new Error('The assistant returned an empty response.');
       }
       this.$('.status').textContent='';
@@ -107,4 +117,3 @@ export class RobotChat extends HTMLElement {
   }
 }
 if(!customElements.get('robot-chat'))customElements.define('robot-chat',RobotChat);
-

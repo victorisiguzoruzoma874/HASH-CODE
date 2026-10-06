@@ -14,6 +14,8 @@ interface UIState {
 }
 
 interface AppStore {
+  sendDraft: { recipientAccountNumber: string; amount: number } | null
+  prepareSend: (draft: { recipientAccountNumber: string; amount: number }) => void
   ui: UIState
   openModal: (modal: ModalType) => void
   closeModal: () => void
@@ -23,6 +25,8 @@ interface AppStore {
 }
 
 export const useStore = create<AppStore>((set) => ({
+  sendDraft: null,
+  prepareSend: (draft) => set(s => ({ sendDraft: draft, ui: { ...s.ui, activeModal: 'send' } })),
   walletNetworks: {},
   selectWalletNetwork: (walletKey, network) => set(s => ({ walletNetworks: { ...s.walletNetworks, [walletKey]: network } })),
   ui: {
@@ -36,6 +40,6 @@ export const useStore = create<AppStore>((set) => ({
     set(s => ({ ui: { ...s.ui, activeModal: modal } }))
   },
   closeModal: () => {
-    set(s => ({ ui: { ...s.ui, activeModal: null } }))
+    set(s => ({ sendDraft: null, ui: { ...s.ui, activeModal: null } }))
   },
 }))

@@ -19,6 +19,8 @@ Omit `endpoint` for clearly labeled demo mode. All attributes update live. Place
 
 ## AI backend
 
+The HashPay dashboard now integrates the DeepSeek backend at `${VITE_API_URL}/assistant` with session authentication and app task buttons. See `backend/ASSISTANT.md` for setup and supported tasks. The standalone demo remains explicitly local demo mode. Embedders may assign the instance's `requestAssistant(url, init)` callback to add authentication and `performAction(action)` to handle allowlisted app actions after a task-button click. Neither callback needs a provider API key.
+
 The endpoint accepts POST JSON `{ "messages": [{"role":"user","content":"Hello"}] }`. Keep provider credentials on your server. Configure the dashboard at build time with `VITE_ASSISTANT_ENDPOINT=/api/assistant`.
 
 Supported responses:

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Modal } from '../ui/Modal'
 import { walletApi } from '../../lib/api'
+import { useStore } from '../../store/useStore'
 
 interface SendModalProps { isOpen: boolean; onClose: () => void }
 
@@ -18,6 +19,7 @@ function useDebounce<T>(value: T, delay: number): T {
 const ngn = (n: number) => `₦${n.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
 export const SendModal: React.FC<SendModalProps> = ({ isOpen, onClose }) => {
+  const draft = useStore(s => s.sendDraft)
   const [accountNum, setAccountNum]     = useState('')
   const [resolvedName, setResolvedName] = useState<string | null>(null)
   const [resolving, setResolving]       = useState(false)
@@ -26,6 +28,13 @@ export const SendModal: React.FC<SendModalProps> = ({ isOpen, onClose }) => {
   const [sendState, setSendState]       = useState<SendState>('idle')
   const [sendError, setSendError]       = useState<string | null>(null)
   const debouncedAccount = useDebounce(accountNum, 600)
+
+  useEffect(() => {
+    if (isOpen && draft) {
+      setAccountNum(draft.recipientAccountNumber); setNgnAmount(String(draft.amount))
+      setResolvedName(null); setSendState('idle'); setSendError(null)
+    }
+  }, [isOpen, draft])
 
   // Fetch the real balance whenever the modal opens
   useEffect(() => {
@@ -37,13 +46,16 @@ export const SendModal: React.FC<SendModalProps> = ({ isOpen, onClose }) => {
 
   // Look up the recipient as the account number is typed
   useEffect(() => {
-    if (debouncedAccount.length !== 10) { setResolvedName(null); return }
+    if (!isOpen || !/^\d{10}$/.test(debouncedAccount)) { setResolvedName(null); return }
+    let active = true
+    setResolvedName(null)
     setResolving(true)
     walletApi.lookup(debouncedAccount)
-      .then(r => setResolvedName(r.data.fullName ?? null))
-      .catch(() => setResolvedName(null))
-      .finally(() => setResolving(false))
-  }, [debouncedAccount])
+      .then(r => { if (active) setResolvedName(r.data.fullName ?? null) })
+      .catch(() => { if (active) setResolvedName(null) })
+      .finally(() => { if (active) setResolving(false) })
+    return () => { active = false }
+  }, [debouncedAccount, isOpen, draft])
 
   // Reset on close
   useEffect(() => {
@@ -56,7 +68,7 @@ export const SendModal: React.FC<SendModalProps> = ({ isOpen, onClose }) => {
   const amount = parseFloat(ngnAmount)
   const overBalance = ngnBalance !== null && amount > ngnBalance
   const canSend =
-    accountNum.length === 10 && !!resolvedName && amount >= 1 &&
+    accountNum === debouncedAccount && !resolving && accountNum.length === 10 && !!resolvedName && amount >= 1 &&
     ngnBalance !== null && !overBalance
 
   const handleSend = async () => {
