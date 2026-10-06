@@ -43,6 +43,7 @@ Translate your provider's protocol into this format on the server. Only backend-
 ## Robot assets
 
 The supplied PNG is copied unchanged. Flattened mode uses whole-image tilt and cannot provide independent eyes, head movement or blinking. It never adds fake eyes or cuts apart the character.
+Mouse movement is tracked across the entire page in the capture phase, including over controls that stop event propagation. A smooth viewport-scaled response keeps the pose changing as the cursor moves across distant parts of the page. The flattened robot leans up to 6° and shifts up to 4px toward the cursor, with 3D tilt capped at 8° per axis. Touch remains tap-only; reduced motion disables tracking.
 
 For real layered animation, supply **all three** aligned transparent PNGs:
 

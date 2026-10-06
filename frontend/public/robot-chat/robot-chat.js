@@ -19,7 +19,7 @@ export class RobotChat extends HTMLElement {
     super(); this.attachShadow({mode:'open'}).append(template.content.cloneNode(true));
     this.messages=[]; this.current=[0,0]; this.target=[0,0]; this.open=false; this.busy=false;
     this.$ = s => this.shadowRoot.querySelector(s);
-    this.motion=matchMedia('(prefers-reduced-motion: reduce)'); this.mouse=matchMedia('(hover: hover) and (pointer: fine)');
+    this.motion=matchMedia('(prefers-reduced-motion: reduce)'); this.mouse=matchMedia('(any-hover: hover) and (any-pointer: fine)');
   }
   connectedCallback() {
     this.listeners=new AbortController(); const signal=this.listeners.signal;
@@ -28,7 +28,7 @@ export class RobotChat extends HTMLElement {
     this.$('.close').addEventListener('click',()=>this.toggle(false),{signal});
     this.$('form').addEventListener('submit',e=>{e.preventDefault();this.send();},{signal});
     this.shadowRoot.addEventListener('keydown',e=>{if(e.key==='Escape'&&this.open){e.preventDefault();this.toggle(false);}},{signal});
-    window.addEventListener('pointermove',e=>{if(e.pointerType==='mouse'&&this.mouse.matches&&!this.motion.matches){this.pointer=[e.clientX,e.clientY];this.aim();}},{signal,passive:true});
+    window.addEventListener('pointermove',e=>{if(e.pointerType==='mouse'&&this.mouse.matches&&!this.motion.matches){this.pointer=[e.clientX,e.clientY];this.aim();}},{signal,passive:true,capture:true});
     document.documentElement.addEventListener('pointerleave',()=>this.neutral(),{signal});
     window.addEventListener('blur',()=>this.neutral(),{signal});
     window.addEventListener('scroll',()=>this.aim(),{signal,passive:true,capture:true});
@@ -56,9 +56,9 @@ export class RobotChat extends HTMLElement {
   }
   neutral(){this.pointer=null;this.target=[0,0];if(this.motion.matches){this.current=[0,0];cancelAnimationFrame(this.frame);this.frame=0;this.paint();}else this.animate();}
   layout(){const r=this.$('.launcher').getBoundingClientRect();this.$('.panel').style.maxHeight=`${Math.max(0,r.top-24)}px`;}
-  aim(){this.layout();if(!this.pointer||this.motion.matches||!this.mouse.matches)return;const r=this.$('.launcher').getBoundingClientRect();this.target=[Math.max(-1,Math.min(1,(this.pointer[0]-r.left-r.width/2)/300)),Math.max(-1,Math.min(1,(this.pointer[1]-r.top-r.height/2)/300))];this.animate();}
+  aim(){this.layout();if(!this.pointer||this.motion.matches||!this.mouse.matches)return;const r=this.$('.launcher').getBoundingClientRect();this.target=[Math.tanh((this.pointer[0]-r.left-r.width/2)/Math.max(240,innerWidth*.55)),Math.tanh((this.pointer[1]-r.top-r.height/2)/Math.max(240,innerHeight*.55))];this.animate();}
   animate(){if(this.frame||!this.isConnected)return;let last=performance.now();const tick=now=>{this.frame=0;const f=1-Math.exp(-Math.min(now-last,64)/100);last=now;this.current=this.current.map((v,i)=>v+(this.target[i]-v)*f);this.paint();if(this.current.some((v,i)=>Math.abs(v-this.target[i])>.001))this.frame=requestAnimationFrame(tick);};this.frame=requestAnimationFrame(tick);}
-  paint(){const [x,y]=this.current;const el=this.$(this.layered?'.head':'.pose');if(el)el.style.transform=`rotateX(${-y*5}deg) rotateY(${x*8}deg) rotateZ(${x*2}deg)`;const eyes=this.$('.eyes');if(eyes)eyes.style.transform=`translate(${x*6}px,${y*6}px)`;}
+  paint(){const [x,y]=this.current;const el=this.$(this.layered?'.head':'.pose');if(el)el.style.transform=`translate(${this.layered?0:x*4}px,${this.layered?0:y*3}px) rotateX(${-y*8}deg) rotateY(${x*8}deg) rotateZ(${x*(this.layered?2:6)}deg)`;const eyes=this.$('.eyes');if(eyes)eyes.style.transform=`translate(${x*6}px,${y*6}px)`;}
   scheduleBlink(){clearTimeout(this.blinkTimer);this.blinkTimer=setTimeout(()=>{const eye=this.$('.eyes .asset');if(eye&& !this.motion.matches){eye.style.transform='scaleY(.12)';eye.style.transformOrigin='50% 32%';this.blinkEnd=setTimeout(()=>{eye.style.transform='';},110);}if(this.isConnected)this.scheduleBlink();},4500+Math.random()*4000);}
   toggle(value=!this.open){this.layout();this.open=value;this.$('.panel').hidden=!value;this.$('.launcher').setAttribute('aria-expanded',String(value));this.$('.launcher').setAttribute('aria-label',value?'Close assistant chat':'Open assistant chat');if(value)this.$('.input').focus();else this.$('.launcher').focus();}
   add(role,content){const message={role,content};this.messages.push(message);const node=document.createElement('div');node.className=`message ${role}`;const label=document.createElement('span');label.className='role';label.textContent=role==='user'?'You':this.getAttribute('assistant-name')||'Assistant';const body=document.createElement('span');body.textContent=content;node.append(label,body);this.$('.history').append(node);this.scroll();return {message,body};}
