@@ -177,6 +177,10 @@ export const authApi = {
     return post<{ user: User; token: string }>('/auth/login', body)
   },
 
+  forgotPassword: (body: { email: string }) => post<{ message: string }>('/auth/forgot-password', body),
+
+  resetPassword: (body: { token: string; password: string }) => post<{ message: string }>('/auth/reset-password', body),
+
   walletChallenge: (body: { walletAddress: string; provider: WalletProvider }) => {
     return post<{ challengeId: string; message: string; expiresAt: string }>('/auth/wallet-challenge', body)
   },

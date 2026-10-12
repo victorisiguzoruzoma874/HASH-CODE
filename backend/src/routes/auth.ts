@@ -6,6 +6,10 @@ import { prisma } from '../config/database'
 import { validate } from '../middleware/validate'
 import { requireAuth, type AuthRequest } from '../middleware/auth'
 import { AppError } from '../middleware/errorHandler'
+import { createHash, randomBytes } from 'crypto'
+import rateLimit from 'express-rate-limit'
+import { logger } from '../utils/logger'
+import { sendWelcomeEmail, sendPasswordResetEmail, sendPasswordChangedEmail } from '../services/email/EmailService'
 import { WalletLinkService } from '../services/wallets/WalletLinkService'
 import { walletProviders } from '../services/wallets/WalletProof'
 import { WalletBalanceService, balanceNetworks } from '../services/wallets/WalletBalanceService'
@@ -58,6 +62,8 @@ authRouter.post(
         select: { id: true, email: true, fullName: true, role: true, hashpayAccountNumber: true, createdAt: true },
       })
 
+      void sendWelcomeEmail(user.email, user.fullName, user.hashpayAccountNumber)
+
       const token = signToken({ sub: user.id, address: '', role: user.role })
       res.status(201).json({ user, token })
     } catch (err) { next(err) }
@@ -87,6 +93,95 @@ authRouter.post(
         user: { id: user.id, email: user.email, fullName: user.fullName, role: user.role },
         token,
       })
+    } catch (err) { next(err) }
+  },
+)
+
+// ── Password reset ───────────────────────────────────────────
+const RESET_TTL_MS = 20 * 60 * 1000
+const sha256 = (v: string) => createHash('sha256').update(v).digest('hex')
+
+// Counts every request (the global /auth limiter skips successful ones).
+const forgotLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, max: 5,
+  message: { error: 'Too many reset requests, please try again later.' },
+  standardHeaders: true, legacyHeaders: false,
+})
+const resetLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, max: 10,
+  message: { error: 'Too many attempts, please try again later.' },
+  standardHeaders: true, legacyHeaders: false,
+})
+const emailHits = new Map<string, number[]>()
+function emailThrottled(email: string): boolean {
+  const now = Date.now()
+  const hits = (emailHits.get(email) ?? []).filter(t => now - t < 3_600_000)
+  const blocked = hits.length >= 3
+  if (!blocked) hits.push(now)
+  emailHits.set(email, hits)
+  if (emailHits.size > 5000) for (const [k, v] of emailHits) if (!v.some(t => now - t < 3_600_000)) emailHits.delete(k)
+  return blocked
+}
+
+// POST /auth/forgot-password — identical response whether or not the email exists
+authRouter.post(
+  '/forgot-password',
+  forgotLimiter,
+  [body('email').isEmail().normalizeEmail()],
+  validate,
+  (req: any, res: any) => {
+    const { email } = req.body
+    res.status(202).json({ message: 'If that email has an account, reset instructions are on the way.' })
+    if (emailThrottled(email)) return
+    void (async () => {
+      try {
+        const user = await prisma.user.findUnique({ where: { email }, select: { id: true, email: true } })
+        if (!user) return
+        const token = randomBytes(32).toString('hex')
+        await prisma.$transaction([
+          prisma.passwordResetToken.deleteMany({ where: { userId: user.id } }),
+          prisma.passwordResetToken.create({
+            data: { userId: user.id, tokenHash: sha256(token), expiresAt: new Date(Date.now() + RESET_TTL_MS) },
+          }),
+        ])
+        const base = (process.env.FRONTEND_URL ?? 'http://localhost:5173').replace(/\/+$/, '')
+        await sendPasswordResetEmail(user.email, `${base}/reset-password?token=${token}`)
+      } catch (err) {
+        logger.error('Password reset request failed', { error: err instanceof Error ? err.message : String(err) })
+      }
+    })()
+  },
+)
+
+// POST /auth/reset-password
+authRouter.post(
+  '/reset-password',
+  resetLimiter,
+  [
+    body('token').isHexadecimal().isLength({ min: 64, max: 64 }),
+    body('password').isLength({ min: 8, max: 72 }).withMessage('Password must be 8 to 72 characters'),
+  ],
+  validate,
+  async (req: any, res: any, next: any) => {
+    try {
+      const invalid = () => new AppError(400, 'This reset link is invalid or has expired.', 'INVALID_RESET_TOKEN')
+      const tokenHash = sha256(String(req.body.token).toLowerCase())
+      const record = await prisma.passwordResetToken.findUnique({ where: { tokenHash }, include: { user: { select: { id: true, email: true } } } })
+      if (!record || record.usedAt || record.expiresAt <= new Date()) throw invalid()
+
+      const passwordHash = await bcrypt.hash(req.body.password, 12)
+      await prisma.$transaction(async tx => {
+        const claimed = await tx.passwordResetToken.updateMany({
+          where: { tokenHash, usedAt: null, expiresAt: { gt: new Date() } },
+          data:  { usedAt: new Date() },
+        })
+        if (claimed.count !== 1) throw invalid()
+        await tx.user.update({ where: { id: record.userId }, data: { passwordHash } })
+        await tx.passwordResetToken.deleteMany({ where: { userId: record.userId, usedAt: null } })
+      })
+
+      void sendPasswordChangedEmail(record.user.email)
+      res.json({ message: 'Password updated. You can now log in.' })
     } catch (err) { next(err) }
   },
 )

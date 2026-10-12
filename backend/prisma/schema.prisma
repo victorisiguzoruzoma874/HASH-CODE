@@ -105,6 +105,7 @@ model User {
   kycJobId         String?
 
   // Relations
+  passwordResetTokens PasswordResetToken[]
   escrowOrders     EscrowOrder[]
   airtimeTransactions AirtimeTransaction[]
   swapHistory      SwapRecord[]
@@ -341,4 +342,18 @@ model DeadLetterOrder {
   createdAt     DateTime @default(now())
 
   @@map("dead_letter_orders")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique @db.Char(64)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("password_reset_tokens")
 }

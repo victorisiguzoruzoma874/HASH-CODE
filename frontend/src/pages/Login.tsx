@@ -63,7 +63,7 @@ export const Login: React.FC = () => {
               <div className="lp-field">
                 <label className="lp-label" htmlFor="password">
                   <span>Password</span>
-                  <a href="#" className="lp-link">Forgot password?</a>
+                  <Link to="/forgot-password" className="lp-link">Forgot password?</Link>
                 </label>
                 <div className="lp-inputwrap">
                   <input
