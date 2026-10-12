@@ -63,12 +63,11 @@ function layout(title: string, bodyHtml: string): string {
 }
 
 export function sendWelcomeEmail(to: string, fullName: string, accountNumber: string | null | undefined): Promise<boolean> {
-  const name = escapeHtml(fullName)
   const acct = accountNumber ? `<p>Your HashPay account number is <strong>${escapeHtml(accountNumber)}</strong>.</p>` : ''
   return sendEmail({
     to,
     subject: 'Welcome to HashPay',
-    html: layout(`Welcome, ${name}`, `<p>Your account is ready.</p>${acct}`),
+    html: layout(`Welcome, ${fullName}`, `<p>Your account is ready.</p>${acct}`),
     text: `Welcome to HashPay, ${fullName}. Your account is ready.${accountNumber ? ` Account number: ${accountNumber}` : ''}`,
   })
 }

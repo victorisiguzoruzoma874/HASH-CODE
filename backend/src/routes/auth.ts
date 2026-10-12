@@ -138,14 +138,14 @@ authRouter.post(
         const user = await prisma.user.findUnique({ where: { email }, select: { id: true, email: true } })
         if (!user) return
         const token = randomBytes(32).toString('hex')
-        await prisma.$transaction([
-          prisma.passwordResetToken.deleteMany({ where: { userId: user.id } }),
-          prisma.passwordResetToken.create({
-            data: { userId: user.id, tokenHash: sha256(token), expiresAt: new Date(Date.now() + RESET_TTL_MS) },
-          }),
-        ])
+        const created = await prisma.passwordResetToken.create({
+          data: { userId: user.id, tokenHash: sha256(token), expiresAt: new Date(Date.now() + RESET_TTL_MS) },
+        })
         const base = (process.env.FRONTEND_URL ?? 'http://localhost:5173').replace(/\/+$/, '')
-        await sendPasswordResetEmail(user.email, `${base}/reset-password?token=${token}`)
+        const sent = await sendPasswordResetEmail(user.email, `${base}/reset-password?token=${token}`)
+        // Keep the previous link usable if delivery failed; retire older links only once the new one is out.
+        if (sent) await prisma.passwordResetToken.deleteMany({ where: { userId: user.id, id: { not: created.id } } })
+        else await prisma.passwordResetToken.delete({ where: { id: created.id } })
       } catch (err) {
         logger.error('Password reset request failed', { error: err instanceof Error ? err.message : String(err) })
       }
