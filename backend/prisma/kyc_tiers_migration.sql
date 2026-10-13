@@ -6,13 +6,20 @@ DO $$ BEGIN
   CREATE TYPE "KycDocumentType" AS ENUM ('ID_FRONT', 'ID_BACK', 'SELFIE', 'ADDRESS_PROOF');
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "kycTier" INTEGER NOT NULL DEFAULT 0;
--- Backfill once from the legacy columns (only touches rows still at tier 0).
-UPDATE "users" SET "kycTier" = CASE
-  WHEN "kycStatus" = 'APPROVED' AND "kycLevel" = 'FULL'  THEN 3
-  WHEN "kycStatus" = 'APPROVED' AND "kycLevel" = 'BASIC' THEN 1
-  ELSE 0 END
-WHERE "kycTier" = 0;
+-- Runs ONCE, at the moment the column is first created: users who already exist are grandfathered
+-- (approved FULL -> Tier 3, everyone else -> Tier 1). On later runs the column exists, so nothing
+-- here touches anyone, and new signups correctly start at Tier 0.
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = current_schema() AND table_name = 'users' AND column_name = 'kycTier'
+  ) THEN
+    ALTER TABLE "users" ADD COLUMN "kycTier" INTEGER NOT NULL DEFAULT 0;
+    UPDATE "users" SET "kycTier" = CASE
+      WHEN "kycStatus" = 'APPROVED' AND "kycLevel" = 'FULL' THEN 3
+      ELSE 1 END;
+  END IF;
+END $$;
 
 CREATE TABLE IF NOT EXISTS "kyc_submissions" (
   "id" TEXT NOT NULL PRIMARY KEY,
