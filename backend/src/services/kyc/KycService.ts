@@ -1,7 +1,6 @@
 import axios from 'axios'
 import { prisma } from '../../config/database'
 import { cacheGet, cacheSet } from '../../config/redis'
-import { logger } from '../../utils/logger'
 
 interface KycResult {
   passed:  boolean
@@ -17,7 +16,7 @@ interface KycResult {
  * Checks (in order):
  *   1. Redis cache (60s TTL)
  *   2. Local DB (user.kycStatus)
- *   3. Smile ID API (external KYC provider)
+ *   (Tier 1 identity checks go to Dojah via verifyIdentity)
  *
  * Minimum KYC level for payout: BASIC
  * Minimum KYC level for large payouts (>$1000): FULL
@@ -49,51 +48,6 @@ export class KycService {
     return result
   }
 
-  async submitKyc(userId: string, data: {
-    firstName:   string
-    lastName:    string
-    dateOfBirth: string
-    idType:      'NIN' | 'BVN' | 'PASSPORT' | 'DRIVERS_LICENSE'
-    idNumber:    string
-    country:     string
-    selfieBase64?: string
-  }): Promise<{ jobId: string; status: string }> {
-    logger.info(`[KycService] Submitting KYC for user ${userId}`)
-
-    const response = await axios.post(
-      'https://3eydmgh10d.execute-api.us-west-2.amazonaws.com/v1/smile_identity',
-      {
-        partner_id:   process.env.SMILE_ID_PARTNER_ID,
-        partner_params: {
-          job_id:   `HP-KYC-${userId}-${Date.now()}`,
-          user_id:  userId,
-          job_type: 5,  // Enhanced KYC
-        },
-        id_info: {
-          first_name:    data.firstName,
-          last_name:     data.lastName,
-          dob:           data.dateOfBirth,
-          id_type:       data.idType,
-          id_number:     data.idNumber,
-          country:       data.country,
-          entered:       true,
-        },
-        options: { return_job_status: true },
-      },
-      {
-        headers: { Authorization: `Bearer ${process.env.SMILE_ID_API_KEY}` },
-      }
-    )
-
-    const jobId = response.data.job_id
-    await prisma.user.update({
-      where: { id: userId },
-      data:  { kycStatus: 'PENDING', kycJobId: jobId },
-    })
-
-    return { jobId, status: 'PENDING' }
-  }
-
   /** Off-ramp payouts need Tier 2; large payouts need Tier 3. */
   private evaluateTier(tier: number, amountUSD?: number): KycResult {
     const level: KycResult['level'] = tier >= 3 ? 'FULL' : tier >= 1 ? 'BASIC' : 'NONE'
@@ -104,29 +58,66 @@ export class KycService {
     return { passed: true, level }
   }
 
-  /** Starts an automated BVN/NIN identity check. Returns the provider job id; the caller stores it. */
-  async startIdentityCheck(userId: string, data: {
+
+  /**
+   * Checks a BVN/NIN against Dojah and compares the registered name and date of birth with what the user entered.
+   * Dojah answers synchronously, so the result is final. Throws when the provider is unreachable or misconfigured
+   * (callers treat that as "try again later"); a number Dojah does not know is a rejection, not an error.
+   */
+  async verifyIdentity(data: {
     firstName: string; lastName: string; dateOfBirth: string
-    idType: 'BVN' | 'NIN'; idNumber: string; country: string
-  }): Promise<string> {
-    if (!process.env.SMILE_ID_PARTNER_ID || !process.env.SMILE_ID_API_KEY) {
-      throw new Error('SMILE_ID_NOT_CONFIGURED')
+    idType: 'BVN' | 'NIN'; idNumber: string
+  }): Promise<IdentityCheckResult> {
+    const appId  = process.env.DOJAH_APP_ID?.trim()
+    const secret = process.env.DOJAH_SECRET_KEY?.trim()
+    if (!appId || !secret) throw new Error('DOJAH_NOT_CONFIGURED: set DOJAH_APP_ID and DOJAH_SECRET_KEY from the same Dojah app and environment')
+
+    const base = process.env.DOJAH_ENV === 'production' ? 'https://api.dojah.io' : 'https://sandbox.dojah.io'
+    const [path, param] = data.idType === 'BVN' ? ['/api/v1/kyc/bvn/full', 'bvn'] : ['/api/v1/kyc/nin', 'nin']
+
+    let entity: Record<string, unknown> | undefined
+    try {
+      const res = await axios.get(`${base}${path}`, {
+        params:  { [param]: data.idNumber },
+        headers: { Authorization: secret, AppId: appId }, // Dojah wants the raw secret, no "Bearer"
+        timeout: 15_000,
+      })
+      entity = res.data?.entity
+    } catch (err) {
+      const status = axios.isAxiosError(err) ? err.response?.status : undefined
+      // Do not propagate Axios errors: their request config contains the secret and ID number.
+      if (status === 401) {
+        const invalidAppId = axios.isAxiosError(err) && err.response?.data?.error === 'Enter Correct AppId'
+        throw new Error(invalidAppId
+          ? 'DOJAH_INVALID_APP_ID: use the App ID from Developers > Configuration for the selected environment, not a public or secret API key'
+          : 'DOJAH_AUTH_FAILED: verify the App ID and secret key belong to the same app and environment')
+      }
+      if (status === 403) throw new Error('DOJAH_ACCESS_DENIED: this app is not permitted to use the requested identity endpoint')
+      if (status === 400 || status === 404) {
+        return { approved: false, reason: `That ${data.idType} was not found. Check the number and try again.` }
+      }
+      throw new Error(`DOJAH_UNAVAILABLE: ${status ? `HTTP ${status}` : 'network request failed'}`)
     }
-    const response = await axios.post(
-      'https://3eydmgh10d.execute-api.us-west-2.amazonaws.com/v1/smile_identity',
-      {
-        partner_id: process.env.SMILE_ID_PARTNER_ID,
-        partner_params: { job_id: `HP-KYC-${userId}-${Date.now()}`, user_id: userId, job_type: 5 },
-        id_info: {
-          first_name: data.firstName, last_name: data.lastName, dob: data.dateOfBirth,
-          id_type: data.idType, id_number: data.idNumber, country: data.country, entered: true,
-        },
-        options: { return_job_status: true },
-      },
-      { headers: { Authorization: `Bearer ${process.env.SMILE_ID_API_KEY}` }, timeout: 15_000 },
-    )
-    const jobId = response.data?.job_id
-    if (typeof jobId !== 'string' || !jobId) throw new Error('SMILE_ID_NO_JOB_ID')
-    return jobId
+    if (!entity) throw new Error('DOJAH_EMPTY_RESPONSE')
+    return matchIdentity(data, entity)
   }
+}
+
+export interface IdentityCheckResult { approved: boolean; reason?: string }
+
+const normName = (v: unknown) => String(v ?? '').toUpperCase().replace(/[^A-Z]/g, '')
+
+/** First and last name must match (either order, middle names ignored) and the date of birth must be identical. */
+export function matchIdentity(
+  input: { firstName: string; lastName: string; dateOfBirth: string },
+  entity: Record<string, unknown>,
+): IdentityCheckResult {
+  const first = normName(entity.first_name), last = normName(entity.last_name)
+  const inFirst = normName(input.firstName), inLast = normName(input.lastName)
+  const namesMatch = !!first && !!last && ((first === inFirst && last === inLast) || (first === inLast && last === inFirst))
+  if (!namesMatch) return { approved: false, reason: 'The name does not match the name registered to this ID.' }
+
+  const dob = typeof entity.date_of_birth === 'string' ? entity.date_of_birth.slice(0, 10) : ''
+  if (dob !== input.dateOfBirth) return { approved: false, reason: 'The date of birth does not match the one registered to this ID.' }
+  return { approved: true }
 }

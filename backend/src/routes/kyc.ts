@@ -1,12 +1,10 @@
 import { Router } from 'express'
 import { body, param, query } from 'express-validator'
 import rateLimit from 'express-rate-limit'
-import { createHmac, timingSafeEqual } from 'node:crypto'
 import { prisma } from '../config/database'
 import { requireAuth, requireRole, type AuthRequest } from '../middleware/auth'
 import { validate } from '../middleware/validate'
 import { AppError } from '../middleware/errorHandler'
-import { logger } from '../utils/logger'
 import { KycSubmissionService } from '../services/kyc/KycSubmissionService'
 import { documentStore } from '../services/kyc/DocumentStore'
 
@@ -78,42 +76,6 @@ kycRouter.post(
     catch (err) { next(err) }
   },
 )
-
-// ── POST /kyc/webhook ────────────────────────────────────────
-// Smile ID callback. Fails closed: without a valid signature nothing changes.
-// Signature scheme per Smile ID docs: base64(HMAC-SHA256(timestamp + partner_id + "sid_request", api_key)).
-// Verify this against the current Smile ID documentation before going live.
-export function verifySmileSignature(timestamp: unknown, signature: unknown, now = Date.now()): boolean {
-  const partnerId = process.env.SMILE_ID_PARTNER_ID
-  const apiKey = process.env.SMILE_ID_API_KEY
-  if (!partnerId || !apiKey || typeof timestamp !== 'string' || typeof signature !== 'string') return false
-  const ts = Date.parse(timestamp)
-  if (!Number.isFinite(ts) || Math.abs(now - ts) > 10 * 60 * 1000) return false // replay window
-  const expected = createHmac('sha256', apiKey).update(timestamp + partnerId + 'sid_request').digest('base64')
-  const a = Buffer.from(expected), b = Buffer.from(signature)
-  return a.length === b.length && timingSafeEqual(a, b)
-}
-
-kycRouter.post('/webhook', async (req: any, res: any, next: any) => {
-  try {
-    const { job_id, result_code, result_text, timestamp, signature } = req.body ?? {}
-    if (!verifySmileSignature(timestamp, signature)) {
-      logger.warn('KYC webhook rejected: bad signature')
-      throw new AppError(401, 'Invalid signature', 'INVALID_SIGNATURE')
-    }
-    if (typeof job_id !== 'string') throw new AppError(400, 'Missing job_id', 'INVALID_PAYLOAD')
-
-    const sub = await prisma.kycSubmission.findUnique({ where: { providerJobId: job_id } })
-    if (sub) {
-      const approved = result_code === '0810' // Smile ID success code
-      await kycService.decide(sub.id, approved ? 'APPROVED' : 'REJECTED', {
-        actorId: 'smile-id',
-        note: approved ? undefined : (typeof result_text === 'string' ? result_text.slice(0, 200) : 'Identity could not be verified.'),
-      })
-    }
-    res.json({ received: true }) // duplicates and unknown jobs are acknowledged without changes
-  } catch (err) { next(err) }
-})
 
 // ── Admin review ─────────────────────────────────────────────
 const admin = Router()

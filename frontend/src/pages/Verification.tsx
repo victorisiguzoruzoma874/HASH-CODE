@@ -61,7 +61,7 @@ export function Verification() {
           })()
       form.reset()
       setStatus(current => current ? { ...current, status: result.status } : current)
-      setNotice(`Submission received. ${labels[result.status]}.`)
+      setNotice(result.status === "PENDING" ? `Submission received. ${labels[result.status]}.` : `${labels[result.status]}.`)
       await load()
       window.dispatchEvent(new Event('kyc-status-updated'))
     } catch (e) { setError(e instanceof Error ? e.message : 'Verification could not be submitted.') }

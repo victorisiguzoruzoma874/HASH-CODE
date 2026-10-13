@@ -44,22 +44,22 @@ export class KycSubmissionService {
   }
 
   async submitTier1(userId: string, input: Tier1Input) {
-    const user = await this.assertCanSubmit(userId, 1)
+    await this.assertCanSubmit(userId, 1)
     const submission = await prisma.kycSubmission.create({
       data: { userId, tier: 1, encryptedData: encrypt(JSON.stringify(input)) },
     })
+    let check
     try {
-      const jobId = await this.provider.startIdentityCheck(userId, input)
-      await prisma.kycSubmission.update({ where: { id: submission.id }, data: { providerJobId: jobId } })
-      await prisma.user.update({ where: { id: userId }, data: { kycStatus: 'PENDING', kycJobId: jobId } })
+      check = await this.provider.verifyIdentity(input)
     } catch (err) {
-      // Nothing was sent for review, so don't leave a stuck PENDING row that blocks the user.
+      // Nothing was decided, so don't leave a stuck PENDING row that blocks the user.
       await prisma.kycSubmission.delete({ where: { id: submission.id } }).catch(() => undefined)
       logger.error('KYC provider call failed', { error: err instanceof Error ? err.message : String(err) })
       throw new AppError(502, 'Identity check is unavailable right now. Please try again later.', 'KYC_PROVIDER_UNAVAILABLE')
     }
-    void sendKycReceivedEmail(user.email, 1)
-    return { submissionId: submission.id, status: 'PENDING' as const }
+    // Dojah answers immediately, so Tier 1 is decided here rather than by a callback.
+    await this.decide(submission.id, check.approved ? 'APPROVED' : 'REJECTED', { actorId: 'dojah', note: check.reason })
+    return { submissionId: submission.id, status: check.approved ? ('APPROVED' as const) : ('REJECTED' as const) }
   }
 
   async submitTier2(userId: string, input: Tier2Input) {

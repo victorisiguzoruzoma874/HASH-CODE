@@ -25,7 +25,7 @@ vi.mock('../../utils/crypto', () => ({ encrypt: (s: string) => `enc:${Buffer.fro
 import { KycSubmissionService } from './KycSubmissionService'
 import { parseDocument } from './DocumentStore'
 
-const provider = { startIdentityCheck: vi.fn() }
+const provider = { verifyIdentity: vi.fn() }
 const store = { put: vi.fn(), get: vi.fn() }
 const svc = () => new KycSubmissionService(provider as any, store as any)
 
@@ -42,27 +42,46 @@ beforeEach(() => {
 })
 
 describe('submitTier1', () => {
+  const decided = (tier = 1) => {
+    m.subUpdateMany.mockResolvedValue({ count: 1 })
+    m.subFindUniqueOrThrow.mockResolvedValue({ id: 'sub1', userId: 'u1', tier, user: { email: 'ada@example.com', kycTier: 0 } })
+  }
+
   it('encrypts the sensitive fields and never stores them in plain text', async () => {
-    provider.startIdentityCheck.mockResolvedValue('job-1')
-    const res = await svc().submitTier1('u1', tier1)
-    expect(res).toEqual({ submissionId: 'sub1', status: 'PENDING' })
+    decided(); provider.verifyIdentity.mockResolvedValue({ approved: true })
+    await svc().submitTier1('u1', tier1)
     const stored = JSON.stringify(m.subCreate.mock.calls[0][0])
     expect(stored).toContain('enc:')
     expect(stored).not.toContain('12345678901')
-    expect(m.sendReceived).toHaveBeenCalledWith('ada@example.com', 1)
+  })
+
+  it('approves immediately when the provider confirms the identity', async () => {
+    decided(); provider.verifyIdentity.mockResolvedValue({ approved: true })
+    expect(await svc().submitTier1('u1', tier1)).toEqual({ submissionId: 'sub1', status: 'APPROVED' })
+    expect(m.userUpdate.mock.calls[0][0].data.kycTier).toBe(1)
+    expect(m.sendApproved).toHaveBeenCalledWith('ada@example.com', 1)
+  })
+
+  it('rejects with the reason when the details do not match', async () => {
+    decided(); provider.verifyIdentity.mockResolvedValue({ approved: false, reason: 'The name does not match the name registered to this ID.' })
+    expect(await svc().submitTier1('u1', tier1)).toEqual({ submissionId: 'sub1', status: 'REJECTED' })
+    expect(m.subUpdateMany.mock.calls[0][0].data.rejectionReason).toContain('name does not match')
+    expect(m.sendRejected).toHaveBeenCalled()
+    expect(m.sendApproved).not.toHaveBeenCalled()
   })
 
   it('removes the submission and reports 502 when the provider is down, so the user is not stuck', async () => {
-    provider.startIdentityCheck.mockRejectedValue(new Error('boom'))
+    provider.verifyIdentity.mockRejectedValue(new Error('boom'))
     await expect(svc().submitTier1('u1', tier1)).rejects.toMatchObject({ statusCode: 502, code: 'KYC_PROVIDER_UNAVAILABLE' })
     expect(m.subDelete).toHaveBeenCalledWith({ where: { id: 'sub1' } })
-    expect(m.sendReceived).not.toHaveBeenCalled()
+    expect(m.subUpdateMany).not.toHaveBeenCalled()
+    expect(m.sendApproved).not.toHaveBeenCalled()
   })
 
   it('refuses when a submission is already under review', async () => {
     m.subFind.mockResolvedValueOnce({ id: 'old', status: 'PENDING' })
     await expect(svc().submitTier1('u1', tier1)).rejects.toMatchObject({ code: 'KYC_PENDING' })
-    expect(provider.startIdentityCheck).not.toHaveBeenCalled()
+    expect(provider.verifyIdentity).not.toHaveBeenCalled()
   })
 
   it('enforces a cooldown after a rejection', async () => {
@@ -114,13 +133,13 @@ describe('decide', () => {
 
   it('is idempotent: a second decision on the same submission changes nothing and sends nothing', async () => {
     m.subUpdateMany.mockResolvedValue({ count: 0 })
-    expect(await svc().decide('sub1', 'APPROVED', { actorId: 'smile-id' })).toBe(false)
+    expect(await svc().decide('sub1', 'APPROVED', { actorId: 'dojah' })).toBe(false)
     expect(m.userUpdate).not.toHaveBeenCalled(); expect(m.sendApproved).not.toHaveBeenCalled()
   })
 
   it('never lowers a tier the user already has', async () => {
     m.subUpdateMany.mockResolvedValue({ count: 1 }); m.subFindUniqueOrThrow.mockResolvedValue({ ...sub, tier: 1, user: { email: 'a@b.c', kycTier: 3 } })
-    await svc().decide('sub1', 'APPROVED', { actorId: 'smile-id' })
+    await svc().decide('sub1', 'APPROVED', { actorId: 'dojah' })
     expect(m.userUpdate.mock.calls[0][0].data.kycTier).toBe(3)
   })
 
