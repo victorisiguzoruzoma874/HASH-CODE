@@ -2,6 +2,7 @@ import { Decimal } from '@prisma/client/runtime/library'
 import { v4 as uuidv4 } from 'uuid'
 import { prisma } from '../../config/database'
 import { AppError } from '../../middleware/errorHandler'
+import { guardDebit } from '../kyc/kycLimits'
 
 export class WalletService {
   // ── Get or create wallet for a user ──────────────────────────
@@ -64,6 +65,7 @@ export class WalletService {
     const ref = `TRF-${uuidv4().replace(/-/g, '').toUpperCase().slice(0, 16)}`
 
     await prisma.$transaction(async (tx) => {
+      await guardDebit(tx, senderId, 'INTERNAL_TRANSFER', amount.toNumber())
       const senderBefore  = new Decimal(senderWallet.ngnBalance)
       const senderAfter   = senderBefore.minus(amount)
       const recipBefore   = new Decimal(recipientWallet.ngnBalance)

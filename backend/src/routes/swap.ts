@@ -7,6 +7,7 @@ import { validate } from '../middleware/validate'
 import { PriceOracleService } from '../services/oracle/PriceOracleService'
 import { AppError } from '../middleware/errorHandler'
 
+import { requireTier } from '../services/kyc/kycLimits'
 export const swapRouter = Router()
 const oracle = new PriceOracleService()
 
@@ -15,6 +16,7 @@ const oracle = new PriceOracleService()
 swapRouter.post(
   '/quote',
   requireAuth,
+  requireTier('SWAP'),
   [
     body('assetIn').isIn(['ETH', 'USDC', 'USDT', 'APT', 'BTC', 'WETH', 'XLM']),
     body('assetOut').isIn(['ETH', 'USDC', 'USDT', 'APT', 'BTC', 'WETH', 'XLM']),
@@ -53,6 +55,7 @@ swapRouter.post(
 swapRouter.post(
   '/build-tx',
   requireAuth,
+  requireTier('SWAP'),
   [
     body('quoteId').notEmpty(),
     body('senderAddress').notEmpty(),
@@ -101,6 +104,7 @@ swapRouter.post(
 swapRouter.post(
   '/submit',
   requireAuth,
+  requireTier('SWAP'),
   [
     body('signedTransaction').notEmpty(),
   ],

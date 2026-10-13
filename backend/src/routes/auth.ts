@@ -247,7 +247,7 @@ authRouter.get('/me', requireAuth, async (req: AuthRequest, res: any, next: any)
       select: {
         id: true, email: true, fullName: true,
         aptosAddress: true, suiAddress: true, evmAddress: true,
-        kycStatus: true, kycLevel: true, role: true,
+        kycStatus: true, kycLevel: true, kycTier: true, role: true,
         preferredCurrency: true, createdAt: true,
         linkedWallets: { select: { id: true, provider: true, chain: true, address: true, createdAt: true } },
       },

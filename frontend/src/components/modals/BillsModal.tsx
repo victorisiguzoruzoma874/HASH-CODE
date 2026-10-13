@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { Modal } from '../ui/Modal'
+import { kycErrorMessage } from '../dashboard/KycError'
 import { billsApi, walletApi, type BillCategory, type BillItem, type BillResult } from '../../lib/api'
 
 interface BillsModalProps { isOpen: boolean; onClose: () => void }
@@ -62,7 +63,7 @@ export const BillsModal: React.FC<BillsModalProps> = ({ isOpen, onClose }) => {
   const [verifyError, setVerifyError] = useState('')
 
   const [paying, setPaying]   = useState(false)
-  const [payError, setPayError] = useState('')
+  const [payError, setPayError] = useState<React.ReactNode>('')
   const [result, setResult]   = useState<BillResult | null>(null)
 
   // Wallet balance whenever the modal opens
@@ -151,7 +152,7 @@ export const BillsModal: React.FC<BillsModalProps> = ({ isOpen, onClose }) => {
       })
       setResult(r)
     } catch (e: any) {
-      setPayError(e?.message ?? 'The purchase failed. You have not been charged.')
+      setPayError(kycErrorMessage(e, onClose) ?? e?.message ?? 'The purchase failed. You have not been charged.')
     } finally {
       setPaying(false)
     }

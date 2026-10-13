@@ -1,4 +1,5 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
+import { kycApi, type KycTier } from '../../lib/api'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useCurrentAccount, useDisconnectWallet } from '@mysten/dapp-kit'
 import { WalletsModal } from '../modals/WalletsModal'
@@ -10,6 +11,7 @@ const navItems = [
   { to: '/dashboard/swap',      label: 'Swap' },
   { to: '/dashboard/portfolio', label: 'Portfolio' },
   { to: '/dashboard/offramp',   label: 'Offramp' },
+  { to: '/dashboard/verification', label: 'Verification' },
 ]
 
 export const Sidebar: React.FC = () => {
@@ -21,6 +23,15 @@ export const Sidebar: React.FC = () => {
   const navigate         = useNavigate()
   const linkedWallets    = useApiStore(s => s.user?.linkedWallets ?? [])
   const [showWallets, setShowWallets] = useState(false)
+  const [tier, setTier] = useState<KycTier | null>(null)
+  useEffect(() => {
+    let active = true
+    const refresh = () => { kycApi.status().then(status => { if (active) setTier(status.tier) }).catch(() => {}) }
+    refresh()
+    window.addEventListener('kyc-status-updated', refresh)
+    const timer = setInterval(refresh, 30_000)
+    return () => { active = false; clearInterval(timer); window.removeEventListener('kyc-status-updated', refresh) }
+  }, [])
 
   const closeOnMobile = () => {
     if (window.innerWidth < 1024 && sidebarOpen) toggleSidebar()
@@ -42,6 +53,7 @@ export const Sidebar: React.FC = () => {
               className={({ isActive }) => `dash-navlink${isActive ? ' active' : ''}`}
             >
               {label}
+              {label === 'Verification' && tier !== null && <span className="dash-chip" style={{ marginLeft: 'auto', padding: '0 6px', minHeight: 22, cursor: 'inherit' }}>Tier {tier}</span>}
             </NavLink>
           ))}
         </nav>

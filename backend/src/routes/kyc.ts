@@ -1,61 +1,158 @@
 import { Router } from 'express'
-import { body } from 'express-validator'
-import { requireAuth, type AuthRequest } from '../middleware/auth'
+import { body, param, query } from 'express-validator'
+import rateLimit from 'express-rate-limit'
+import { createHmac, timingSafeEqual } from 'node:crypto'
+import { prisma } from '../config/database'
+import { requireAuth, requireRole, type AuthRequest } from '../middleware/auth'
 import { validate } from '../middleware/validate'
-import { KycService } from '../services/kyc/KycService'
+import { AppError } from '../middleware/errorHandler'
+import { logger } from '../utils/logger'
+import { KycSubmissionService } from '../services/kyc/KycSubmissionService'
+import { documentStore } from '../services/kyc/DocumentStore'
 
 export const kycRouter = Router()
-const kyc = new KycService()
+export const kycService = new KycSubmissionService()
+
+// Submissions are expensive and sensitive: a few per hour per user.
+const submitLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, max: 8,
+  keyGenerator: (req: any) => req.user?.id ?? req.ip,
+  message: { error: 'Too many verification attempts, please try again later.' },
+  standardHeaders: true, legacyHeaders: false,
+})
 
 // ── GET /kyc/status ──────────────────────────────────────────
 kycRouter.get('/status', requireAuth, async (req: AuthRequest, res: any, next: any) => {
   try {
-    const { prisma } = await import('../config/database')
-    const user = await prisma.user.findUnique({
-      where:  { id: req.user!.id },
-      select: { kycStatus: true, kycLevel: true, kycJobId: true },
-    })
-    res.json({ kyc: user })
+    res.setHeader('Cache-Control', 'no-store')
+    res.json(await kycService.status(req.user!.id))
   } catch (err) { next(err) }
 })
 
-// ── POST /kyc/submit ─────────────────────────────────────────
+// ── POST /kyc/tier1 ──────────────────────────────────────────
 kycRouter.post(
-  '/submit',
-  requireAuth,
+  '/tier1', requireAuth, submitLimiter,
   [
-    body('firstName').trim().notEmpty(),
-    body('lastName').trim().notEmpty(),
-    body('dateOfBirth').isISO8601().withMessage('Date must be ISO 8601 (YYYY-MM-DD)'),
-    body('idType').isIn(['NIN', 'BVN', 'PASSPORT', 'DRIVERS_LICENSE']),
-    body('idNumber').notEmpty(),
-    body('country').isISO31661Alpha2().withMessage('Must be a valid 2-letter country code'),
+    body('firstName').trim().isLength({ min: 1, max: 80 }),
+    body('lastName').trim().isLength({ min: 1, max: 80 }),
+    body('dateOfBirth').isISO8601({ strict: true }).withMessage('Date must be YYYY-MM-DD'),
+    body('phone').trim().matches(/^\+?[0-9]{8,15}$/).withMessage('Enter a valid phone number'),
+    body('idType').isIn(['BVN', 'NIN']),
+    body('idNumber').trim().matches(/^[0-9]{11}$/).withMessage('BVN and NIN are 11 digits'),
+    body('country').isISO31661Alpha2(),
   ],
   validate,
   async (req: AuthRequest, res: any, next: any) => {
-    try {
-      const result = await kyc.submitKyc(req.user!.id, req.body)
-      res.json({ message: 'KYC submitted successfully', ...result })
-    } catch (err) { next(err) }
+    try { res.status(202).json(await kycService.submitTier1(req.user!.id, req.body)) }
+    catch (err) { next(err) }
+  },
+)
+
+// ── POST /kyc/tier2 ──────────────────────────────────────────
+kycRouter.post(
+  '/tier2', requireAuth, submitLimiter,
+  [
+    body('idType').isIn(['NIN', 'PASSPORT', 'DRIVERS_LICENSE']),
+    body('idFrontBase64').isString().isLength({ min: 100, max: 4_300_000 }),
+    body('idBackBase64').optional().isString().isLength({ min: 100, max: 4_300_000 }),
+    body('selfieBase64').isString().isLength({ min: 100, max: 4_300_000 }),
+  ],
+  validate,
+  async (req: AuthRequest, res: any, next: any) => {
+    try { res.status(202).json(await kycService.submitTier2(req.user!.id, req.body)) }
+    catch (err) { next(err) }
+  },
+)
+
+// ── POST /kyc/tier3 ──────────────────────────────────────────
+kycRouter.post(
+  '/tier3', requireAuth, submitLimiter,
+  [
+    body('address').trim().isLength({ min: 10, max: 300 }),
+    body('sourceOfFunds').trim().isLength({ min: 3, max: 500 }),
+    body('addressProofBase64').isString().isLength({ min: 100, max: 4_300_000 }),
+  ],
+  validate,
+  async (req: AuthRequest, res: any, next: any) => {
+    try { res.status(202).json(await kycService.submitTier3(req.user!.id, req.body)) }
+    catch (err) { next(err) }
   },
 )
 
 // ── POST /kyc/webhook ────────────────────────────────────────
-// Smile ID posts results here
+// Smile ID callback. Fails closed: without a valid signature nothing changes.
+// Signature scheme per Smile ID docs: base64(HMAC-SHA256(timestamp + partner_id + "sid_request", api_key)).
+// Verify this against the current Smile ID documentation before going live.
+export function verifySmileSignature(timestamp: unknown, signature: unknown, now = Date.now()): boolean {
+  const partnerId = process.env.SMILE_ID_PARTNER_ID
+  const apiKey = process.env.SMILE_ID_API_KEY
+  if (!partnerId || !apiKey || typeof timestamp !== 'string' || typeof signature !== 'string') return false
+  const ts = Date.parse(timestamp)
+  if (!Number.isFinite(ts) || Math.abs(now - ts) > 10 * 60 * 1000) return false // replay window
+  const expected = createHmac('sha256', apiKey).update(timestamp + partnerId + 'sid_request').digest('base64')
+  const a = Buffer.from(expected), b = Buffer.from(signature)
+  return a.length === b.length && timingSafeEqual(a, b)
+}
+
 kycRouter.post('/webhook', async (req: any, res: any, next: any) => {
   try {
-    const { job_id, result_code, result_text } = req.body
-    const { prisma } = await import('../config/database')
+    const { job_id, result_code, result_text, timestamp, signature } = req.body ?? {}
+    if (!verifySmileSignature(timestamp, signature)) {
+      logger.warn('KYC webhook rejected: bad signature')
+      throw new AppError(401, 'Invalid signature', 'INVALID_SIGNATURE')
+    }
+    if (typeof job_id !== 'string') throw new AppError(400, 'Missing job_id', 'INVALID_PAYLOAD')
 
-    const approved = result_code === '0810'  // Smile ID success code
-    await prisma.user.updateMany({
-      where: { kycJobId: job_id },
-      data:  {
-        kycStatus: approved ? 'APPROVED' : 'REJECTED',
-        kycLevel:  approved ? 'BASIC' : 'NONE',
-      },
-    })
-
-    res.json({ received: true })
+    const sub = await prisma.kycSubmission.findUnique({ where: { providerJobId: job_id } })
+    if (sub) {
+      const approved = result_code === '0810' // Smile ID success code
+      await kycService.decide(sub.id, approved ? 'APPROVED' : 'REJECTED', {
+        actorId: 'smile-id',
+        note: approved ? undefined : (typeof result_text === 'string' ? result_text.slice(0, 200) : 'Identity could not be verified.'),
+      })
+    }
+    res.json({ received: true }) // duplicates and unknown jobs are acknowledged without changes
   } catch (err) { next(err) }
 })
+
+// ── Admin review ─────────────────────────────────────────────
+const admin = Router()
+admin.use(requireAuth, requireRole('ADMIN'))
+
+admin.get('/submissions', [query('status').optional().isIn(['PENDING', 'APPROVED', 'REJECTED', 'NEEDS_MORE_INFO'])], validate,
+  async (req: AuthRequest, res: any, next: any) => {
+    try {
+      const rows = await prisma.kycSubmission.findMany({
+        where: { status: (req.query.status as any) ?? 'PENDING' },
+        orderBy: { createdAt: 'asc' }, take: 100,
+        select: { id: true, tier: true, status: true, createdAt: true, user: { select: { email: true, fullName: true } }, documents: { select: { id: true, type: true, mimeType: true } } },
+      })
+      res.setHeader('Cache-Control', 'no-store')
+      res.json({ submissions: rows })
+    } catch (err) { next(err) }
+  })
+
+admin.get('/documents/:id', [param('id').isUUID()], validate, async (req: AuthRequest, res: any, next: any) => {
+  try {
+    const doc = await prisma.kycDocument.findUnique({ where: { id: req.params.id } })
+    if (!doc) throw new AppError(404, 'Document not found', 'NOT_FOUND')
+    await prisma.kycAuditLog.create({ data: { actorId: req.user!.id, action: 'VIEW_DOCUMENT', submissionId: doc.submissionId, note: doc.type } })
+    res.setHeader('Cache-Control', 'no-store')
+    res.type(doc.mimeType).send(await documentStore.get(doc.storageKey))
+  } catch (err) { next(err) }
+})
+
+const decideRoute = (path: string, decision: 'APPROVED' | 'REJECTED' | 'NEEDS_MORE_INFO', noteRequired: boolean) =>
+  admin.post(path, [param('id').isUUID(), body('note').optional().isString().isLength({ max: 300 }), ...(noteRequired ? [body('note').trim().notEmpty()] : [])], validate,
+    async (req: AuthRequest, res: any, next: any) => {
+      try {
+        const done = await kycService.decide(req.params.id, decision, { actorId: req.user!.id, note: req.body.note })
+        if (!done) throw new AppError(409, 'This submission was already decided or does not exist.', 'KYC_ALREADY_DECIDED')
+        res.json({ message: `Submission ${decision.toLowerCase().replace(/_/g, ' ')}.` })
+      } catch (err) { next(err) }
+    })
+decideRoute('/submissions/:id/approve', 'APPROVED', false)
+decideRoute('/submissions/:id/reject', 'REJECTED', true)
+decideRoute('/submissions/:id/request-info', 'NEEDS_MORE_INFO', true)
+
+kycRouter.use('/admin', admin)

@@ -5,6 +5,7 @@ import { prisma } from '../../config/database'
 import { cacheGet, cacheSet } from '../../config/redis'
 import { AppError } from '../../middleware/errorHandler'
 import { logger } from '../../utils/logger'
+import { guardDebit } from '../kyc/kycLimits'
 
 /**
  * BillsService
@@ -151,6 +152,7 @@ export class BillsService {
 
     // ── 1. Debit the wallet atomically ────────────────────────────
     const ledgerId = await prisma.$transaction(async (tx) => {
+      await guardDebit(tx, opts.userId, 'BILLS', total.toNumber())
       const wallet = await tx.wallet.findUnique({ where: { userId: opts.userId } })
       if (!wallet) throw new AppError(400, 'Insufficient balance', 'INSUFFICIENT_BALANCE')
 

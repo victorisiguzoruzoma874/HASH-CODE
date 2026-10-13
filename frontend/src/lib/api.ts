@@ -289,14 +289,37 @@ export const airtimeApi = {
 // ── KYC ───────────────────────────────────────────────────────
 
 export const kycApi = {
-  getStatus: () => {
-    return get<{ kyc: { kycStatus: string; kycLevel: string } }>('/kyc/status')
-  },
-
-  submit: (body: object) => {
-    return post<{ jobId: string; status: string }>('/kyc/submit', body)
-  },
+  status: () => get<KycStatus>('/kyc/status'),
+  getStatus: () => get<KycStatus>('/kyc/status'),
+  submitTier1: (body: KycTier1Input) => post<KycSubmissionResult>('/kyc/tier1', body),
+  submitTier2: (body: KycTier2Input) => post<KycSubmissionResult>('/kyc/tier2', body),
+  submitTier3: (body: KycTier3Input) => post<KycSubmissionResult>('/kyc/tier3', body),
 }
+
+export type KycTier = 0 | 1 | 2 | 3
+export type KycSubmissionStatus = 'NONE' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'NEEDS_MORE_INFO'
+export interface KycStatus {
+  tier: KycTier
+  status: KycSubmissionStatus
+  nextTier: 1 | 2 | 3 | null
+  requirements: { key: string; label: string; done: boolean }[]
+  limits: { perTx: number; daily: number; monthly: number; usedToday: number; usedMonth: number; remainingDaily: number; remainingMonthly: number }
+  tiers: { tier: KycTier; label: string; requirements: string[]; allowedActions: string[]; perTxLimit: number; dailyLimit: number; monthlyLimit: number }[]
+  latestSubmission: { id: string; tier: KycTier; status: KycSubmissionStatus; rejectionReason: string | null; createdAt: string } | null
+}
+export interface KycTier1Input {
+  firstName: string; lastName: string; dateOfBirth: string; phone: string
+  idType: 'BVN' | 'NIN'; idNumber: string; country: 'NG'
+}
+export interface KycTier2Input {
+  idType: 'NIN' | 'PASSPORT' | 'DRIVERS_LICENSE'
+  idFrontBase64: string; idBackBase64?: string; selfieBase64: string
+}
+export interface KycTier3Input {
+  address: string; sourceOfFunds: string; addressProofBase64: string
+  addressProofMime: 'image/jpeg' | 'image/png' | 'application/pdf'
+}
+export interface KycSubmissionResult { submissionId: string; status: KycSubmissionStatus }
 
 // ── Health ────────────────────────────────────────────────────
 

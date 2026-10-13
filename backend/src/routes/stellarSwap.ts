@@ -2,11 +2,13 @@ import { Router, type Response, type NextFunction } from 'express'
 import { body, param } from 'express-validator'
 import { requireAuth, type AuthRequest } from '../middleware/auth'
 import { validate } from '../middleware/validate'
+import { requireTier } from '../services/kyc/kycLimits'
 import { StellarSwapService } from '../services/stellar/StellarSwapService'
 
 export const stellarSwapRouter = Router()
 const service = new StellarSwapService()
 stellarSwapRouter.use(requireAuth)
+stellarSwapRouter.use(requireTier('SWAP'))
 stellarSwapRouter.post('/quote', [
   body('walletId').isString().isLength({ min: 1, max: 100 }),
   body('assetIn').isIn(['XLM', 'USDC']), body('assetOut').isIn(['XLM', 'USDC']),

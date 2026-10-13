@@ -7,6 +7,7 @@ import { requireAuth, type AuthRequest } from '../middleware/auth'
 import { validate } from '../middleware/validate'
 import { AppError } from '../middleware/errorHandler'
 import { walletService } from '../services/wallet/WalletService'
+import { requireTier } from '../services/kyc/kycLimits'
 
 export const walletRouter = Router()
 
@@ -87,14 +88,14 @@ walletRouter.post('/create-virtual-account', async (req: AuthRequest, res: any, 
       where:  { id: req.user!.id },
       select: {
         id: true, fullName: true, email: true,
-        kycLevel: true, virtualAccountNumber: true,
+        kycTier: true, virtualAccountNumber: true,
       },
     })
     if (!user) throw new AppError(404, 'User not found', 'USER_NOT_FOUND')
     if (user.virtualAccountNumber) {
       return res.json({ message: 'Virtual account already exists', data: { accountNumber: user.virtualAccountNumber } })
     }
-    if (user.kycLevel === 'NONE') {
+    if (user.kycTier < 1) {
       throw new AppError(403, 'KYC required to create a virtual account', 'KYC_REQUIRED')
     }
 
@@ -145,6 +146,7 @@ walletRouter.post('/create-virtual-account', async (req: AuthRequest, res: any, 
 // Create a Paycrest order so the user can fund their NGN wallet with crypto
 walletRouter.post(
   '/initiate-deposit',
+  requireTier('RECEIVE'),
   [
     body('token').isIn(['USDC', 'USDT']).withMessage('token must be USDC or USDT'),
     body('network').notEmpty().withMessage('network is required'),

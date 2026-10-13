@@ -8,6 +8,7 @@ import { Dashboard }     from './pages/Dashboard'
 import { SwapPage }      from './pages/SwapPage'
 import { PortfolioPage } from './pages/PortfolioPage'
 import { OfframpPage }   from './pages/OfframpPage'
+import { Verification } from './pages/Verification'
 import { AuthGuard }     from './components/ui/AuthGuard'
 import { HashPayIcon }   from './components/ui/HashPayLogo'
 
@@ -45,6 +46,7 @@ function App() {
             <Route path="swap"      element={<SwapPage />} />
             <Route path="portfolio" element={<PortfolioPage />} />
             <Route path="offramp"   element={<OfframpPage />} />
+            <Route path="verification" element={<Verification />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />

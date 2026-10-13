@@ -5,6 +5,7 @@ import { prisma } from '../config/database'
 import { requireAuth, type AuthRequest } from '../middleware/auth'
 import { validate } from '../middleware/validate'
 import { AppError } from '../middleware/errorHandler'
+import { requireTier, assertAllowed } from '../services/kyc/kycLimits'
 import { PriceOracleService } from '../services/oracle/PriceOracleService'
 import {
   signQuote, getBackendPublicKey, getCurrentSuiEpoch,
@@ -78,6 +79,7 @@ escrowRouter.get(
 escrowRouter.post(
   '/quote',
   requireAuth,
+  requireTier('OFFRAMP'),
   [
     body('asset').isIn(SUPPORTED_ASSETS),
     body('amountIn').isNumeric().withMessage('amountIn must be a number'),
@@ -93,6 +95,8 @@ escrowRouter.post(
       const gross     = parseFloat(amountIn) * rate
       const fee       = gross * (FEE_BPS / 10_000)
       const netAmount = Math.floor(gross - fee)
+      // Limits are in NGN; other payout currencies only get the tier check above.
+      if (currencyOut === 'NGN') await assertAllowed(prisma, req.user!.id, 'OFFRAMP', netAmount)
 
       // ── 2. Convert to on-chain u64 values ────────────────
       const decimals    = getDecimals(asset)

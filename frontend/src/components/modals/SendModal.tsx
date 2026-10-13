@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Modal } from '../ui/Modal'
 import { walletApi } from '../../lib/api'
+import { kycErrorMessage } from '../dashboard/KycError'
 import { useStore } from '../../store/useStore'
 
 interface SendModalProps { isOpen: boolean; onClose: () => void }
@@ -26,7 +27,7 @@ export const SendModal: React.FC<SendModalProps> = ({ isOpen, onClose }) => {
   const [ngnBalance, setNgnBalance]     = useState<number | null>(null)
   const [ngnAmount, setNgnAmount]       = useState('')
   const [sendState, setSendState]       = useState<SendState>('idle')
-  const [sendError, setSendError]       = useState<string | null>(null)
+  const [sendError, setSendError]       = useState<React.ReactNode>(null)
   const debouncedAccount = useDebounce(accountNum, 600)
 
   useEffect(() => {
@@ -79,7 +80,7 @@ export const SendModal: React.FC<SendModalProps> = ({ isOpen, onClose }) => {
       setNgnBalance(prev => (prev !== null ? prev - amount : null))
       setTimeout(() => { setSendState('idle'); onClose() }, 2200)
     } catch (e: any) {
-      setSendError(e.message ?? 'The transfer failed. Try again.')
+      setSendError(kycErrorMessage(e, onClose) ?? e.message ?? 'The transfer failed. Try again.')
       setSendState('error')
     }
   }

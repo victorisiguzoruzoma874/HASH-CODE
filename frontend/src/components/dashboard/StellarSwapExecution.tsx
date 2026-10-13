@@ -4,6 +4,7 @@ import { stellarSwapApi, type StellarSwapQuote, type StellarSwapResult } from '.
 import { signStellarSwap } from '../../lib/walletConnectors'
 import { useApiStore } from '../../store/useApiStore'
 import { displayCryptoAmount } from './ConnectedWalletBalances'
+import { kycErrorMessage } from './KycError'
 
 interface Props { assetIn: string; assetOut: string; amountIn: string; onBusy: (busy: boolean) => void }
 interface PendingSwap { quoteId: string; transactionHash: string }
@@ -17,7 +18,7 @@ export const StellarSwapExecution: React.FC<Props> = ({ assetIn, assetOut, amoun
   const [result, setResult] = useState<StellarSwapResult | null>(null)
   const [pending, setPending] = useState<PendingSwap | null>(null)
   const [busy, setBusy] = useState(false)
-  const [message, setMessage] = useState('')
+  const [message, setMessage] = useState<React.ReactNode>('')
   const [now, setNow] = useState(Date.now())
   const queryClient = useQueryClient()
   const storageKey = `hashpay-stellar-pending:${user?.id}`
@@ -61,7 +62,7 @@ export const StellarSwapExecution: React.FC<Props> = ({ assetIn, assetOut, amoun
     try {
       const response = await stellarSwapApi.quote({ walletId: selected.id, assetIn, assetOut, amountIn })
       if (live.current && generation.current === requestGeneration) setQuote(response)
-    } catch (error: any) { if (live.current) setMessage(error.message ?? 'Could not find a Stellar swap route.') }
+    } catch (error: any) { if (live.current) setMessage(kycErrorMessage(error) ?? error.message ?? 'Could not find a Stellar swap route.') }
     finally { if (live.current) { setBusy(false); onBusy(false) } }
   }
   const execute = async () => {
@@ -78,7 +79,7 @@ export const StellarSwapExecution: React.FC<Props> = ({ assetIn, assetOut, amoun
       const response = await stellarSwapApi.submit(quote.quoteId, signed)
       if (live.current) { finish(response); setMessage('') }
     } catch (error: any) {
-      if (live.current) setMessage(sent ? 'Submission was interrupted. Checking this transaction; do not repeat the swap yet.' : error.message ?? 'Wallet approval was cancelled.')
+      if (live.current) setMessage(kycErrorMessage(error) ?? (sent ? 'Submission was interrupted. Checking this transaction; do not repeat the swap yet.' : error.message ?? 'Wallet approval was cancelled.'))
     } finally { if (live.current) { setBusy(false); if (!sent) onBusy(false) } }
   }
   const expired = quote && now >= Date.parse(quote.expiresAt)

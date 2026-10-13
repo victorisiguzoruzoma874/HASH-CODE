@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { Modal } from '../ui/Modal'
+import { kycErrorMessage } from '../dashboard/KycError'
 import { useApiStore } from '../../store/useApiStore'
 import { escrowApi, payoutApi, type ConvertQuote } from '../../lib/api'
 
@@ -41,7 +42,7 @@ export const ConvertModal: React.FC<ConvertModalProps> = ({ isOpen, onClose }) =
 
   const [quote, setQuote]           = useState<ConvertQuote | null>(null)
   const [quoteLoading, setQuoteLoading] = useState(false)
-  const [quoteError, setQuoteError] = useState('')
+  const [quoteError, setQuoteError] = useState<React.ReactNode>('')
 
   const debouncedAmount = useDebounce(amount, 500)
 
@@ -63,7 +64,7 @@ export const ConvertModal: React.FC<ConvertModalProps> = ({ isOpen, onClose }) =
     const getQuote = asset.symbol === 'XLM' ? escrowApi.getEstimate : escrowApi.getQuote
     getQuote({ asset: asset.symbol, amountIn: n, currencyOut: 'NGN' })
       .then(q => { if (!cancelled) setQuote(q) })
-      .catch(e => { if (!cancelled) { setQuote(null); setQuoteError(e?.message ?? 'Could not get a quote. Try again.') } })
+      .catch(e => { if (!cancelled) { setQuote(null); setQuoteError(kycErrorMessage(e, onClose) ?? e?.message ?? 'Could not get a quote. Try again.') } })
       .finally(() => { if (!cancelled) setQuoteLoading(false) })
     return () => { cancelled = true }
   }, [isOpen, debouncedAmount, asset.symbol])

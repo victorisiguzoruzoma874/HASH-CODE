@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { Decimal } from '@prisma/client/runtime/library'
 
+// KYC limits have their own tests (kycLimits.test.ts); here the guard is a no-op.
+vi.mock('../kyc/kycLimits', () => ({ guardDebit: vi.fn(async () => undefined) }))
+
 // ── In-memory stand-ins for the database, cache and provider ──────────
 const { db, prismaMock, axiosMock } = vi.hoisted(() => {
   // eslint-disable-next-line @typescript-eslint/no-var-requires

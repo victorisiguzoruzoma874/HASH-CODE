@@ -34,11 +34,11 @@ export class KycService {
     // Check DB first
     const user = await prisma.user.findUnique({
       where:  { aptosAddress },
-      select: { kycStatus: true, kycLevel: true },
+      select: { kycTier: true },
     })
 
     if (user) {
-      const result = this.evaluateKycStatus(user.kycStatus, user.kycLevel, amountUSD)
+      const result = this.evaluateTier(user.kycTier, amountUSD)
       await cacheSet(cacheKey, result, this.CACHE_TTL)
       return result
     }
@@ -94,17 +94,39 @@ export class KycService {
     return { jobId, status: 'PENDING' }
   }
 
-  private evaluateKycStatus(
-    status: string, level: string, amountUSD?: number
-  ): KycResult {
-    if (status !== 'APPROVED') {
-      return { passed: false, level: level as KycResult['level'], reason: `KYC_STATUS_${status}` }
+  /** Off-ramp payouts need Tier 2; large payouts need Tier 3. */
+  private evaluateTier(tier: number, amountUSD?: number): KycResult {
+    const level: KycResult['level'] = tier >= 3 ? 'FULL' : tier >= 1 ? 'BASIC' : 'NONE'
+    if (tier < 2) return { passed: false, level, reason: 'TIER_2_REQUIRED' }
+    if (amountUSD && amountUSD > this.LARGE_PAYOUT_THRESHOLD_USD && tier < 3) {
+      return { passed: false, level, reason: 'TIER_3_REQUIRED_FOR_LARGE_PAYOUT' }
     }
+    return { passed: true, level }
+  }
 
-    if (amountUSD && amountUSD > this.LARGE_PAYOUT_THRESHOLD_USD && level !== 'FULL') {
-      return { passed: false, level: level as KycResult['level'], reason: 'FULL_KYC_REQUIRED_FOR_LARGE_PAYOUT' }
+  /** Starts an automated BVN/NIN identity check. Returns the provider job id; the caller stores it. */
+  async startIdentityCheck(userId: string, data: {
+    firstName: string; lastName: string; dateOfBirth: string
+    idType: 'BVN' | 'NIN'; idNumber: string; country: string
+  }): Promise<string> {
+    if (!process.env.SMILE_ID_PARTNER_ID || !process.env.SMILE_ID_API_KEY) {
+      throw new Error('SMILE_ID_NOT_CONFIGURED')
     }
-
-    return { passed: true, level: level as KycResult['level'] }
+    const response = await axios.post(
+      'https://3eydmgh10d.execute-api.us-west-2.amazonaws.com/v1/smile_identity',
+      {
+        partner_id: process.env.SMILE_ID_PARTNER_ID,
+        partner_params: { job_id: `HP-KYC-${userId}-${Date.now()}`, user_id: userId, job_type: 5 },
+        id_info: {
+          first_name: data.firstName, last_name: data.lastName, dob: data.dateOfBirth,
+          id_type: data.idType, id_number: data.idNumber, country: data.country, entered: true,
+        },
+        options: { return_job_status: true },
+      },
+      { headers: { Authorization: `Bearer ${process.env.SMILE_ID_API_KEY}` }, timeout: 15_000 },
+    )
+    const jobId = response.data?.job_id
+    if (typeof jobId !== 'string' || !jobId) throw new Error('SMILE_ID_NO_JOB_ID')
+    return jobId
   }
 }

@@ -32,7 +32,7 @@ export async function executeAssistantTool(userId: string, name: string, raw: un
   const args = toolSchemas[name as keyof typeof toolSchemas].parse(raw)
   switch (name) {
     case 'get_account': {
-      const account = await prisma.user.findUnique({ where: { id: userId }, select: { fullName: true, kycStatus: true, kycLevel: true, hashpayAccountNumber: true, preferredCurrency: true, wallet: { select: { ngnBalance: true } }, linkedWallets: { select: { chain: true, provider: true, address: true } } } })
+      const account = await prisma.user.findUnique({ where: { id: userId }, select: { fullName: true, kycStatus: true, kycLevel: true, kycTier: true, hashpayAccountNumber: true, preferredCurrency: true, wallet: { select: { ngnBalance: true } }, linkedWallets: { select: { chain: true, provider: true, address: true } } } })
       if (!account) throw new Error('Account unavailable')
       return { data: account }
     }

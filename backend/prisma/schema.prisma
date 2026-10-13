@@ -26,6 +26,20 @@ enum KycStatus {
   REJECTED
 }
 
+enum KycSubmissionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  NEEDS_MORE_INFO
+}
+
+enum KycDocumentType {
+  ID_FRONT
+  ID_BACK
+  SELFIE
+  ADDRESS_PROOF
+}
+
 enum KycLevel {
   NONE
   BASIC
@@ -103,6 +117,8 @@ model User {
   kycStatus        KycStatus @default(NONE)
   kycLevel         KycLevel  @default(NONE)
   kycJobId         String?
+  kycTier          Int       @default(0)   // 0-3, see services/kyc/kycTiers.ts
+  kycSubmissions   KycSubmission[]
 
   // Relations
   passwordResetTokens PasswordResetToken[]
@@ -356,4 +372,47 @@ model PasswordResetToken {
   @@index([userId])
   @@index([expiresAt])
   @@map("password_reset_tokens")
+}
+
+model KycSubmission {
+  id              String                  @id @default(uuid())
+  userId          String
+  user            User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tier            Int                     // the tier being requested (1-3)
+  status          KycSubmissionStatus     @default(PENDING)
+  providerJobId   String?                 @unique
+  encryptedData   String?                 // AES-256-GCM JSON of sensitive fields (BVN/NIN, DOB, address, ...)
+  rejectionReason String?
+  reviewedBy      String?
+  reviewedAt      DateTime?
+  createdAt       DateTime                @default(now())
+  documents       KycDocument[]
+
+  @@index([userId, status])
+  @@map("kyc_submissions")
+}
+
+model KycDocument {
+  id           String           @id @default(uuid())
+  submissionId String
+  submission   KycSubmission    @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  type         KycDocumentType
+  storageKey   String
+  mimeType     String
+  createdAt    DateTime         @default(now())
+
+  @@index([submissionId])
+  @@map("kyc_documents")
+}
+
+model KycAuditLog {
+  id        String   @id @default(uuid())
+  actorId   String
+  action    String   // APPROVE | REJECT | REQUEST_INFO | SUBMIT | WEBHOOK
+  submissionId String?
+  note      String?
+  createdAt DateTime @default(now())
+
+  @@index([submissionId])
+  @@map("kyc_audit_log")
 }
